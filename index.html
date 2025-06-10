@@ -15,6 +15,25 @@
             margin: 0;
             padding: 0;
         }
+        /* Estilos para o conteúdo do popup */
+        .popup-content-wrapper {
+            display: flex; /* Habilita o Flexbox */
+            align-items: center; /* Alinha verticalmente ao centro */
+            gap: 10px; /* Espaço entre os itens (imagem e texto) */
+        }
+        .popup-logo {
+            width: 50px; /* Largura da imagem do logotipo */
+            height: auto; /* Mantém a proporção */
+            flex-shrink: 0; /* Evita que a imagem encolha */
+        }
+        .popup-details {
+            display: flex;
+            flex-direction: column;
+        }
+        .popup-title {
+            font-weight: bold;
+            margin-bottom: 5px; /* Espaço abaixo do título */
+        }
     </style>
 </head>
 <body>
@@ -36,10 +55,19 @@
             const fullAddress = `${addressPart}Portimão, Portugal`;
             const encodedAddress = encodeURIComponent(fullAddress);
 
-            // Construir o conteúdo do popup, incluindo o logotipo, se disponível
-            let popupContent = `<b>${item.title || 'Sem título'}</b><br>${fullAddress}`;
+            // Construir o conteúdo do popup com a imagem e o texto lado a lado
+            let popupContent = '';
             if (item.logotipo) {
-                popupContent = `<img src="${item.logotipo}" alt="Logotipo" width="50"><br>` + popupContent; // Ajuste a largura conforme necessário
+                popupContent += `<div class="popup-content-wrapper">`;
+                popupContent += `<img src="${item.logotipo}" alt="Logotipo" class="popup-logo">`;
+                popupContent += `<div class="popup-details">`;
+                popupContent += `<span class="popup-title">${item.title || 'Sem título'}</span>`;
+                popupContent += `<span>${fullAddress}</span>`;
+                popupContent += `</div>`;
+                popupContent += `</div>`;
+            } else {
+                // Se não houver logotipo, exibe apenas o título e o endereço
+                popupContent = `<b>${item.title || 'Sem título'}</b><br>${fullAddress}`;
             }
 
             try {
