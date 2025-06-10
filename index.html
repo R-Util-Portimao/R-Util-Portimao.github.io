@@ -25,18 +25,18 @@
     crossorigin=""></script>
     <script>
         // Initialize map
-        const map = L.map('map').setView([37.136569, -8.5376], 9); // Default view, will be adjusted
+        // Set initial view directly to Portimão for a better starting point
+        const map = L.map('map').setView([37.136569, -8.5376], 13); // Centered on Portimão with a good zoom
         const layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>' // Good practice to include attribution
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         });
         layer.addTo(map);
 
         // Function to geocode an address and add a pin
         async function addPinFromAddress(item) {
-            // Construct a full address string for geocoding
-            // Adjust this string based on how your address data is structured in Wix
-            const fullAddress = `${item.address || ''}, ${item.city || ''}, ${item.postalCode || ''}, ${item.country || 'Portugal'}`;
+            // Construct the full address string, using hardcoded city and country
+            const fullAddress = `${item.address || ''}, Portimão, Portugal`;
             
             // Encode the address for the URL
             const encodedAddress = encodeURIComponent(fullAddress);
@@ -52,12 +52,12 @@
 
                     const marker = L.marker([lat, lon])
                         .addTo(map)
-                        .bindPopup(`<b>${item.title || 'Sem título'}</b><br>${fullAddress}`); // Popup with title and full address
+                        .bindPopup(`<b>${item.title || 'Sem título'}</b><br>${fullAddress}`);
                     
-                    return [lat, lon]; // Return coordinates for fitting bounds
+                    return [lat, lon];
                 } else {
                     console.warn(`Could not geocode address: "${fullAddress}". No results found.`);
-                    return null; // Return null if geocoding fails
+                    return null;
                 }
             } catch (error) {
                 console.error(`Error geocoding address "${fullAddress}":`, error);
@@ -68,7 +68,7 @@
         // Function to add pins to the map from the received data
         async function adicionarPins(dados) {
             const allCoordinates = [];
-            // Process each item one by one to avoid hitting Nominatim rate limits too quickly
+            // Process each item sequentially to respect Nominatim rate limits
             for (const item of dados) {
                 const coords = await addPinFromAddress(item);
                 if (coords) {
@@ -87,9 +87,7 @@
         // Listen for messages from Wix
         window.addEventListener("message", function (event) {
             try {
-                // Ensure the origin of the message is your Wix site for security
-                // (e.g., if (event.origin === "https://yourwixsite.com"))
-                
+                // For security, it's a good practice to check event.origin against your Wix site URL
                 const data = JSON.parse(event.data);
 
                 if (Array.isArray(data)) {
