@@ -24,42 +24,81 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""></script>
     <script>
-        // Inicializar mapa
-        const map = L.map('map').setView([37.136569, -8.5376], 9);
+        // Initialize map
+        const map = L.map('map').setView([37.136569, -8.5376], 9); // Default view, will be adjusted
         const layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>' // Good practice to include attribution
         });
         layer.addTo(map);
 
-        // Função para adicionar os pins no mapa
-        function adicionarPins(dados) {
-            const bounds = [];
+        // Function to geocode an address and add a pin
+        async function addPinFromAddress(item) {
+            // Construct a full address string for geocoding
+            // Adjust this string based on how your address data is structured in Wix
+            const fullAddress = `${item.address || ''}, ${item.city || ''}, ${item.postalCode || ''}, ${item.country || 'Portugal'}`;
+            
+            // Encode the address for the URL
+            const encodedAddress = encodeURIComponent(fullAddress);
 
-            dados.forEach(item => {
-                if (item.latitude && item.longitude) {
-                    const marker = L.marker([item.latitude, item.longitude])
+            try {
+                // Nominatim API endpoint
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1&addressdetails=1`);
+                const data = await response.json();
+
+                if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
+
+                    const marker = L.marker([lat, lon])
                         .addTo(map)
-                        .bindPopup(item.title || "Sem título");
-                    bounds.push([item.latitude, item.longitude]);
+                        .bindPopup(`<b>${item.title || 'Sem título'}</b><br>${fullAddress}`); // Popup with title and full address
+                    
+                    return [lat, lon]; // Return coordinates for fitting bounds
+                } else {
+                    console.warn(`Could not geocode address: "${fullAddress}". No results found.`);
+                    return null; // Return null if geocoding fails
                 }
-            });
-
-            // Ajusta a visão para mostrar todos os pins
-            if (bounds.length > 0) {
-                map.fitBounds(bounds, { padding: [50, 50] });
+            } catch (error) {
+                console.error(`Error geocoding address "${fullAddress}":`, error);
+                return null;
             }
         }
 
-        // Ouvir mensagens vindas do Wix
+        // Function to add pins to the map from the received data
+        async function adicionarPins(dados) {
+            const allCoordinates = [];
+            // Process each item one by one to avoid hitting Nominatim rate limits too quickly
+            for (const item of dados) {
+                const coords = await addPinFromAddress(item);
+                if (coords) {
+                    allCoordinates.push(coords);
+                }
+            }
+            
+            // Adjust map view to show all successfully geocoded pins
+            if (allCoordinates.length > 0) {
+                map.fitBounds(allCoordinates, { padding: [50, 50] });
+            } else {
+                console.warn("No valid locations found to display on the map.");
+            }
+        }
+
+        // Listen for messages from Wix
         window.addEventListener("message", function (event) {
             try {
+                // Ensure the origin of the message is your Wix site for security
+                // (e.g., if (event.origin === "https://yourwixsite.com"))
+                
                 const data = JSON.parse(event.data);
 
                 if (Array.isArray(data)) {
                     adicionarPins(data);
+                } else {
+                    console.warn("Received data is not an array:", data);
                 }
             } catch (e) {
-                console.error("Erro ao converter a mensagem:", e);
+                console.error("Error parsing message from Wix:", e);
             }
         }, false);
     </script>
