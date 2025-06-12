@@ -1,178 +1,175 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa com Dados Recebidos</title>
-    <!-- Leaflet CSS para estilização do mapa -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""/>
-    <style>
-        /* Garante que o mapa ocupe toda a altura e largura da viewport */
-        #map {
-            height: 100vh;
-            width: 100%;
-        }
-        /* Reinicia as margens e preenchimentos padrão do navegador */
-        body, html {
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif; /* Usando a fonte Inter para consistência */
-        }
-        /* Estilos para o conteúdo dentro do popup */
-        .popup-content-wrapper {
-            display: flex; /* Habilita o Flexbox para alinhamento horizontal */
-            align-items: center; /* Alinha verticalmente os itens ao centro */
-            gap: 10px; /* Espaço entre a imagem e o texto */
-            border-radius: 8px; /* Cantos arredondados para o wrapper */
-            padding: 5px; /* Preenchimento em torno do conteúdo */
-        }
-        .popup-logo {
-            width: 50px; /* Largura fixa para a imagem do logotipo */
-            height: auto; /* Mantém a proporção */
-            flex-shrink: 0; /* Impede que a imagem encolha */
-            border-radius: 4px; /* Cantos ligeiramente arredondados para o logotipo */
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Sombra sutil para o logotipo */
-        }
-        .popup-details {
-            display: flex;
-            flex-direction: column; /* Empilha o título e o endereço verticalmente */
-        }
-        .popup-title {
-            font-weight: bold;
-            margin-bottom: 3px; /* Espaço menor abaixo do título */
-            color: #333; /* Cor mais escura para o título */
-        }
-        .popup-details span {
-            font-size: 0.9em; /* Fonte ligeiramente menor para os detalhes */
-            color: #555; /* Cinza médio para os detalhes */
-        }
-        /* Estilos personalizados para os popups do Leaflet */
-        .leaflet-popup-content-wrapper {
-            border-radius: 8px; /* Cantos arredondados para todo o popup */
-            box-shadow: 0 4px 8px rgba(0,0,0,0.15); /* Sombra mais proeminente para o popup */
-        }
-    </style>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapa com Dados Recebidos</title>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""/>
+    <style>
+        /* Garante que o mapa ocupe toda a altura e largura da viewport */
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+        /* Reinicia as margens e preenchimentos padrão do navegador */
+        body, html {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif; /* Usando a fonte Inter para consistência */
+        }
+        /* Estilos para o conteúdo dentro do popup */
+        .popup-content-wrapper {
+            display: flex; /* Habilita o Flexbox para alinhamento horizontal */
+            align-items: center; /* Alinha verticalmente os itens ao centro */
+            gap: 10px; /* Espaço entre a imagem e o texto */
+            border-radius: 8px; /* Cantos arredondados para o wrapper */
+            padding: 5px; /* Preenchimento em torno do conteúdo */
+        }
+        .popup-logo {
+            width: 50px; /* Largura fixa para a imagem do logotipo */
+            height: auto; /* Mantém a proporção */
+            flex-shrink: 0; /* Impede que a imagem encolha */
+            border-radius: 4px; /* Cantos ligeiramente arredondados para o logotipo */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Sombra sutil para o logotipo */
+        }
+        .popup-details {
+            display: flex;
+            flex-direction: column; /* Empilha o título e o endereço verticalmente */
+        }
+        .popup-title {
+            font-weight: bold;
+            margin-bottom: 3px; /* Espaço menor abaixo do título */
+            color: #333; /* Cor mais escura para o título */
+        }
+        .popup-details span {
+            font-size: 0.9em; /* Fonte ligeiramente menor para os detalhes */
+            color: #555; /* Cinza médio para os detalhes */
+        }
+        /* Estilos personalizados para os popups do Leaflet */
+        .leaflet-popup-content-wrapper {
+            border-radius: 8px; /* Cantos arredondados para todo o popup */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.15); /* Sombra mais proeminente para o popup */
+        }
+    </style>
 </head>
 <body>
-    <div id="map"></div>
+    <div id="map"></div>
 
-    <!-- Biblioteca JavaScript do Leaflet -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""></script>
-    <script>
-        // Inicializa o mapa, centrado em Portugal com um nível de zoom que mostra a maior parte do país.
-        const map = L.map('map').setView([39.5, -8.0], 7);
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
+    <script>
+        // Inicializa o mapa, centrado em Portugal com um nível de zoom que mostra a maior parte do país.
+        const map = L.map('map').setView([39.5, -8.0], 7);
 
-        // Adiciona uma camada de mapa OpenStreetMap
-        const layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-        });
-        layer.addTo(map);
+        // Adiciona uma camada de mapa OpenStreetMap
+        const layer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        });
+        layer.addTo(map);
 
-        /**
-         * Adiciona um marcador ao mapa através da geocodificação de um endereço.
-         * @param {Object} item - Um objeto contendo detalhes do endereço (address, postalCode, title, logotipo).
-         * @returns {Array|null} - Um array [latitude, longitude] se a geocodificação for bem-sucedida, caso contrário, null.
-         */
-        async function addPinFromAddress(item) {
-            // Constrói o endereço completo dinamicamente.
-            // Assegura que 'Portimão' e 'Portugal' estejam sempre incluídos,
-            // e filtra quaisquer partes vazias para evitar vírgulas extras.
-            const addressParts = [item.address, item.postalCode, 'Portimão', 'Portugal'].filter(Boolean);
-            const fullAddress = addressParts.join(', ');
-            const encodedAddress = encodeURIComponent(fullAddress);
+        /**
+         * Adiciona um marcador ao mapa através da geocodificação de um endereço.
+         * @param {Object} item - Um objeto contendo detalhes do endereço (address, postalCode, title, logotipo).
+         * @returns {Array|null} - Um array [latitude, longitude] se a geocodificação for bem-sucedida, caso contrário, null.
+         */
+        async function addPinFromAddress(item) {
+            // Constrói o endereço completo dinamicamente.
+            // Removido o hardcoded 'Portimão' para permitir geolocalização correta em outras cidades.
+            const addressParts = [item.address, item.postalCode, 'Portugal'].filter(Boolean);
+            const fullAddress = addressParts.join(', ');
+            const encodedAddress = encodeURIComponent(fullAddress);
 
-            let popupContent = '';
-            // Constrói o conteúdo do popup com base na disponibilidade de um logotipo
-            if (item.logotipo) {
-                popupContent += `<div class="popup-content-wrapper">`;
-                // Usa uma imagem de espaço reservado se o URL do logotipo falhar ao carregar
-                popupContent += `<img src="${item.logotipo}" alt="Logotipo" class="popup-logo" onerror="this.onerror=null;this.src='https://placehold.co/50x50/cccccc/333333?text=Logo';">`;
-                popupContent += `<div class="popup-details">`;
-                popupContent += `<span class="popup-title">${item.title || 'Sem título'}</span>`;
-                popupContent += `<span>${fullAddress}</span>`;
-                popupContent += `</div>`;
-                popupContent += `</div>`;
-            } else {
-                // Conteúdo do popup mais simples se não houver logotipo
-                popupContent = `<b>${item.title || 'Sem título'}</b><br>${fullAddress}`;
-            }
+            let popupContent = '';
+            // Constrói o conteúdo do popup com base na disponibilidade de um logotipo
+            if (item.logotipo) {
+                popupContent += `<div class="popup-content-wrapper">`;
+                // Usa uma imagem de espaço reservado se o URL do logotipo falhar ao carregar
+                popupContent += `<img src="${item.logotipo}" alt="Logotipo" class="popup-logo" onerror="this.onerror=null;this.src='https://placehold.co/50x50/cccccc/333333?text=Logo';">`;
+                popupContent += `<div class="popup-details">`;
+                popupContent += `<span class="popup-title">${item.title || 'Sem título'}</span>`;
+                popupContent += `<span>${fullAddress}</span>`;
+                popupContent += `</div>`;
+                popupContent += `</div>`;
+            } else {
+                // Conteúdo do popup mais simples se não houver logotipo
+                popupContent = `<b>${item.title || 'Sem título'}</b><br>${fullAddress}`;
+            }
 
-            try {
-                // Solicitação de geocodificação à API Nominatim OpenStreetMap
-                // 'countrycodes=pt' ajuda a priorizar resultados dentro de Portugal
-                const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1&addressdetails=1&countrycodes=pt`, {
-                    headers: {
-                        // IMPORTANTE: Substitua 'YourAppName/1.0 (your-email@example.com)' pelo nome real da sua aplicação e e-mail de contato.
-                        // Isso é exigido pela política de uso do Nominatim.
-                        'User-Agent': 'MyWixMapApp/1.0 (your-email@example.com)' 
-                    }
-                });
-                const data = await response.json();
+            try {
+                // Solicitação de geocodificação à API Nominatim OpenStreetMap
+                // 'countrycodes=pt' ajuda a priorizar resultados dentro de Portugal
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodedAddress}&format=json&limit=1&addressdetails=1&countrycodes=pt`, {
+                    headers: {
+                        // IMPORTANTE: Substitua 'YourAppName/1.0 (your-email@example.com)' pelo nome real da sua aplicação e e-mail de contato.
+                        // Isso é exigido pela política de uso do Nominatim.
+                        'User-Agent': 'MyWixMapApp/1.0 (your-email@example.com)' 
+                    }
+                });
+                const data = await response.json();
 
-                // Verifica se a geocodificação retornou algum resultado
-                if (data && data.length > 0) {
-                    const lat = parseFloat(data[0].lat);
-                    const lon = parseFloat(data[0].lon);
+                // Verifica se a geocodificação retornou algum resultado
+                if (data && data.length > 0) {
+                    const lat = parseFloat(data[0].lat);
+                    const lon = parseFloat(data[0].lon);
 
-                    // Cria e adiciona um marcador ao mapa, vinculando o conteúdo do popup
-                    const marker = L.marker([lat, lon])
-                        .addTo(map)
-                        .bindPopup(popupContent);
-                    
-                    console.log(`Endereço geocodificado com sucesso "${fullAddress}" para [${lat}, ${lon}]`);
-                    return [lat, lon];
-                } else {
-                    console.warn(`Não foi possível geocodificar o endereço: "${fullAddress}". Nenhum resultado encontrado. Resposta do Nominatim:`, data);
-                    return null;
-                }
-            } catch (error) {
-                console.error(`Erro ao geocodificar o endereço "${fullAddress}":`, error);
-                return null;
-            }
-        }
+                    // Cria e adiciona um marcador ao mapa, vinculando o conteúdo do popup
+                    const marker = L.marker([lat, lon])
+                        .addTo(map)
+                        .bindPopup(popupContent);
+                    
+                    console.log(`Endereço geocodificado com sucesso "${fullAddress}" para [${lat}, ${lon}]`);
+                    return [lat, lon];
+                } else {
+                    console.warn(`Não foi possível geocodificar o endereço: "${fullAddress}". Nenhum resultado encontrado. Resposta do Nominatim:`, data);
+                    return null;
+                }
+            } catch (error) {
+                console.error(`Erro ao geocodificar o endereço "${fullAddress}":`, error);
+                return null;
+            }
+        }
 
-        /**
-         * Itera sobre uma lista de itens de dados e adiciona marcadores ao mapa para cada um.
-         * Depois que todos os marcadores são adicionados, ajusta a visualização do mapa para englobar todos eles.
-         * @param {Array<Object>} dados - Um array de objetos, cada um contendo informações de endereço.
-         */
-        async function adicionarPins(dados) {
-            const allCoordinates = [];
-            for (const item of dados) {
-                const coords = await addPinFromAddress(item);
-                if (coords) {
-                    allCoordinates.push(coords);
-                }
-            }
-            
-            // Ajusta os limites do mapa para se ajustarem a todos os marcadores adicionados com sucesso
-            if (allCoordinates.length > 0) {
-                map.fitBounds(allCoordinates, { padding: [50, 50] }); // Adiciona preenchimento para manter os marcadores longe da borda
-            } else {
-                console.warn("Nenhuma localização válida encontrada para exibir no mapa. A visualização do mapa permanece na configuração inicial.");
-            }
-        }
+        /**
+         * Itera sobre uma lista de itens de dados e adiciona marcadores ao mapa para cada um.
+         * Depois que todos os marcadores são adicionados, ajusta a visualização do mapa para englobar todos eles.
+         * @param {Array<Object>} dados - Um array de objetos, cada um contendo informações de endereço.
+         */
+        async function adicionarPins(dados) {
+            const allCoordinates = [];
+            for (const item of dados) {
+                const coords = await addPinFromAddress(item);
+                if (coords) {
+                    allCoordinates.push(coords);
+                }
+            }
+            
+            // Ajusta os limites do mapa para se ajustarem a todos os marcadores adicionados com sucesso
+            if (allCoordinates.length > 0) {
+                map.fitBounds(allCoordinates, { padding: [50, 50] }); // Adiciona preenchimento para manter os marcadores longe da borda
+            } else {
+                console.warn("Nenhuma localização válida encontrada para exibir no mapa. A visualização do mapa permanece na configuração inicial.");
+            }
+        }
 
-        // Listener de eventos para receber mensagens (dados) do frame pai (por exemplo, Wix)
-        window.addEventListener("message", function (event) {
-            try {
-                // Tenta analisar os dados recebidos como JSON
-                const data = JSON.parse(event.data);
-                // Verifica se os dados analisados são um array
-                if (Array.isArray(data)) {
-                    adicionarPins(data); // Chama a função para adicionar marcadores
-                } else {
-                    console.warn("Os dados recebidos não são um array:", data);
-                }
-            } catch (e) {
-                console.error("Erro ao analisar a mensagem do remetente:", e);
-            }
-        }, false); /* 'false' indica a fase de propagação do evento, 'true' é a fase de captura */
-    </script>
+        // Listener de eventos para receber mensagens (dados) do frame pai (por exemplo, Wix)
+        window.addEventListener("message", function (event) {
+            try {
+                // Tenta analisar os dados recebidos como JSON
+                const data = JSON.parse(event.data);
+                // Verifica se os dados analisados são um array
+                if (Array.isArray(data)) {
+                    adicionarPins(data); // Chama a função para adicionar marcadores
+                } else {
+                    console.warn("Os dados recebidos não são um array:", data);
+                }
+            } catch (e) {
+                console.error("Erro ao analisar a mensagem do remetente:", e);
+            }
+        }, false); /* 'false' indica a fase de propagação do evento, 'true' é a fase de captura */
+    </script>
 </body>
 </html>
