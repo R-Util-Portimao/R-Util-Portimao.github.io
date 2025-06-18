@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -72,44 +72,53 @@
 
     <script>
         window.onmessage = (event) => {
-            if (event.origin === "https://rutilportimao.wixsite.com/index/formularios-r-util-1?rc=test-site" || event.origin === "https://rutilportimao.wixsite.com/index/formularios-r-util-1") { // Replace with your actual Wix site domain
-                try {
-                    const data = JSON.parse(event.data);
-                    const container = document.getElementById('data-container');
-                    container.innerHTML = ''; // Clear initial message
+            // AVISO DE SEGURANÇA: Esta condição de origem foi removida para depuração.
+            // Para produção, é ALTAMENTE RECOMENDADO reativar esta verificação
+            // e garantir que event.origin corresponda ao seu domínio Wix publicado.
+            // Exemplo de como reativar:
+            // if (event.origin === "https://rutilportimao.wixsite.com" || event.origin === "https://www.seudominio.com") {
+            //    // ... seu código seguro aqui
+            // } else {
+            //    console.warn("Message received from unexpected origin (blocked):", event.origin);
+            // }
 
-                    if (data && Array.isArray(data) && data.length > 0) {
-                        data.forEach(item => {
-                            const card = document.createElement('div');
-                            card.classList.add('item-card');
+            try {
+                const data = JSON.parse(event.data);
+                const container = document.getElementById('data-container');
+                container.innerHTML = ''; // Clear initial message
 
-                            if (item.logotipo) {
-                                const img = document.createElement('img');
-                                img.src = item.logotipo;
-                                img.alt = item.title ? `${item.title} logo` : 'Logo';
-                                img.classList.add('logo');
-                                card.appendChild(img);
-                            }
+                if (data && Array.isArray(data) && data.length > 0) {
+                    data.forEach(item => {
+                        const card = document.createElement('div');
+                        card.classList.add('item-card');
 
-                            const title = document.createElement('h3');
-                            title.textContent = item.title || 'No Title';
-                            card.appendChild(title);
+                        if (item.logotipo) {
+                            const img = document.createElement('img');
+                            img.src = item.logotipo;
+                            img.alt = item.title ? `${item.title} logo` : 'Logo';
+                            img.classList.add('logo');
+                            card.appendChild(img);
+                        }
 
-                            const address = document.createElement('p');
-                            address.textContent = item.address || 'No Address';
-                            card.appendChild(address);
+                        const title = document.createElement('h3');
+                        title.textContent = item.title || 'No Title';
+                        card.appendChild(title);
 
-                            container.appendChild(card);
-                        });
-                    } else {
-                        container.innerHTML = '<p class="no-data">No data received or data is empty.</p>';
-                    }
-                } catch (error) {
-                    console.error("Error parsing message from Wix:", error);
-                    document.getElementById('data-container').innerHTML = '<p class="no-data" style="color: red;">Error loading data.</p>';
+                        const address = document.createElement('p');
+                        address.textContent = `${item.moradaCompleta || ''} ${item.cp || ''}`.trim();
+                        if (address.textContent === "") {
+                            address.textContent = "No Address Info";
+                        }
+                        card.appendChild(address);
+
+                        container.appendChild(card);
+                    });
+                } else {
+                    container.innerHTML = '<p class="no-data">No data received or data is empty.</p>';
                 }
-            } else {
-                console.warn("Message received from unexpected origin:", event.origin);
+            } catch (error) {
+                console.error("Error parsing message from Wix:", error);
+                document.getElementById('data-container').innerHTML = '<p class="no-data" style="color: red;">Error loading data.</p>';
             }
         };
     </script>
