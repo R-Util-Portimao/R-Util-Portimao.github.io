@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Postal Code Geocoder - Portugal</title>
+    <title>Postal Code Map - Portugal</title>
     <style>
         #map {
             height: 400px;
@@ -14,28 +14,16 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 <body>
-    <h1>Postal Code to Coordinates (Portugal)</h1>
-    <input type="text" id="postalCodeInput" placeholder="Enter Postal Code (e.g., 8500-050 or 8500-710 Portimão)">
-    <button id="geocodeButton">Geocode</button>
-    <p>Latitude: <span id="latitude"></span></p>
-    <p>Longitude: <span id="longitude"></span></p>
+    <h1>Location Map (Portugal)</h1>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        // Replace with your actual Geoapify API Key
-        const GEOAPIFY_API_KEY = 'e4c64a3a1721414ca9747bde14c59e2e';
-
-        const postalCodeInput = document.getElementById('postalCodeInput');
-        const geocodeButton = document.getElementById('geocodeButton');
-        const latitudeSpan = document.getElementById('latitude');
-        const longitudeSpan = document.getElementById('longitude');
-        const mapContainer = document.getElementById('map');
-
         let map = null;
         let marker = null;
 
-        function initMap(lat, lng) {
+        // Function to initialize and update the map
+        function displayMap(lat, lng, postalCode = '') {
             if (map) {
                 map.remove(); // Remove existing map if it exists
             }
@@ -43,53 +31,51 @@
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
+
+            if (marker) {
+                marker.setLatLng([lat, lng]);
+            } else {
+                marker = L.marker([lat, lng]).addTo(map);
+            }
+
+            if (postalCode) {
+                marker.bindPopup(`<b>${postalCode}</b><br>Lat: ${lat}<br>Lon: ${lng}`).openPopup();
+            } else {
+                marker.bindPopup(`Lat: ${lat}<br>Lon: ${lng}`).openPopup();
+            }
+            map.setView([lat, lng], 13); // Center map on new location
         }
 
-        geocodeButton.addEventListener('click', async () => {
-            let postalCode = postalCodeInput.value.trim();
-            // Hardcode country code to Portugal
-            const countryCode = 'pt'; 
+        // Example of how Wix might pass data (you'll adapt this part)
+        // For demonstration, let's assume Wix provides a function or object with coordinates
+        // Replace this with how Wix will actually pass you the lat/lon.
+        // For example, if Wix sets global variables, or uses a message passing mechanism.
 
-            // If the postal code contains a space, take only the part before the first space
-            if (postalCode.includes(' ')) {
-                postalCode = postalCode.split(' ')[0];
-            }
+        // Placeholder: How you might receive data from Wix
+        // Let's simulate receiving data after the page loads.
+        window.onload = () => {
+            // This is where you would receive the latitude and longitude from Wix.
+            // For example, if Wix is embedding this HTML and passing data via a global variable:
+            // const latFromWix = window.wixLat;
+            // const lonFromWix = window.wixLon;
+            // const postalCodeFromWix = window.wixPostalCode;
 
-            if (!postalCode) {
-                alert('Please enter a postal code.');
-                return;
-            }
+            // For now, let's use example coordinates for Alvor, Portugal (since that's your current location context)
+            const exampleLat = 37.1293; // Latitude for Alvor
+            const exampleLon = -8.5997; // Longitude for Alvor
+            const examplePostalCode = "8500-050 Alvor"; // Example postal code
 
-            try {
-                const response = await fetch(`https://api.geoapify.com/v1/geocode/search?postcode=${postalCode}&countrycode=${countryCode}&apiKey=${GEOAPIFY_API_KEY}`);
-                const data = await response.json();
+            // Call displayMap with the received coordinates
+            displayMap(exampleLat, exampleLon, examplePostalCode);
+        };
 
-                if (data.features && data.features.length > 0) {
-                    const firstFeature = data.features[0];
-                    const lat = firstFeature.properties.lat;
-                    const lon = firstFeature.properties.lon;
-
-                    latitudeSpan.textContent = lat;
-                    longitudeSpan.textContent = lon;
-
-                    initMap(lat, lon); // Initialize or update map
-                    if (marker) {
-                        marker.setLatLng([lat, lon]);
-                    } else {
-                        marker = L.marker([lat, lon]).addTo(map)
-                            .bindPopup(`<b>${postalCode}</b><br>Lat: ${lat}<br>Lon: ${lon}`).openPopup();
-                    }
-                    map.setView([lat, lon], 13); // Center map on new location
-                } else {
-                    latitudeSpan.textContent = 'N/A';
-                    longitudeSpan.textContent = 'N/A';
-                    alert('Postal code not found or invalid.');
-                }
-            } catch (error) {
-                console.error('Error geocoding postal code:', error);
-                alert('An error occurred while geocoding. Please try again.');
-            }
-        });
+        // If Wix is interacting via postMessage, you might listen like this:
+        // window.addEventListener('message', (event) => {
+        //     // Ensure the message is from a trusted source if implementing cross-origin communication
+        //     if (event.data && event.data.type === 'displayMap' && event.data.lat && event.data.lon) {
+        //         displayMap(event.data.lat, event.data.lon, event.data.postalCode || '');
+        //     }
+        // });
     </script>
 </body>
 </html>
