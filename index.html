@@ -1,9 +1,9 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Postal Code Geocoder</title>
+    <title>Postal Code Geocoder - Portugal</title>
     <style>
         #map {
             height: 400px;
@@ -14,13 +14,8 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 <body>
-    <h1>Postal Code to Coordinates</h1>
-    <input type="text" id="postalCodeInput" placeholder="Enter Postal Code (e.g., 8500-050)">
-    <select id="countrySelect">
-        <option value="pt">Portugal</option>
-        <option value="us">United States</option>
-        <option value="gb">United Kingdom</option>
-    </select>
+    <h1>Postal Code to Coordinates (Portugal)</h1>
+    <input type="text" id="postalCodeInput" placeholder="Enter Postal Code (e.g., 8500-050 or 8500-710 Portimão)">
     <button id="geocodeButton">Geocode</button>
     <p>Latitude: <span id="latitude"></span></p>
     <p>Longitude: <span id="longitude"></span></p>
@@ -32,7 +27,6 @@
         const GEOAPIFY_API_KEY = 'e4c64a3a1721414ca9747bde14c59e2e';
 
         const postalCodeInput = document.getElementById('postalCodeInput');
-        const countrySelect = document.getElementById('countrySelect');
         const geocodeButton = document.getElementById('geocodeButton');
         const latitudeSpan = document.getElementById('latitude');
         const longitudeSpan = document.getElementById('longitude');
@@ -53,14 +47,13 @@
 
         geocodeButton.addEventListener('click', async () => {
             let postalCode = postalCodeInput.value.trim();
-            const countryCode = countrySelect.value;
+            // Hardcode country code to Portugal
+            const countryCode = 'pt'; 
 
-            // **Modification starts here**
             // If the postal code contains a space, take only the part before the first space
             if (postalCode.includes(' ')) {
                 postalCode = postalCode.split(' ')[0];
             }
-            // **Modification ends here**
 
             if (!postalCode) {
                 alert('Please enter a postal code.');
