@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -29,14 +29,20 @@
         let map = null;
         let markers = L.featureGroup(); // Use a feature group to manage multiple markers
 
+        // **YOUR GEOAPIFY API KEY HERE**
+        const GEOAPIFY_API_KEY = "e4c64a3a1721414ca9747bde14c59e2e"; 
+
         // Function to initialize and update the map with multiple locations
         function displayMapWithLocations(locations) {
             if (!map) {
                 // Initialize map only once if it doesn't exist
                 map = L.map('map').setView([37.12, -8.58], 12); // Default view, maybe Alvor area
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+
+                // Use Geoapify Tile Layer
+                L.tileLayer(`https://maps.geoapify.com/v1/tile?zoom={z}&lat={y}&lon={x}&apiKey=${GEOAPIFY_API_KEY}`, {
+                    attribution: 'Powered by <a href="https://www.geoapify.com/" target="_blank">Geoapify</a> | &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }).addTo(map);
+
                 markers.addTo(map); // Add the feature group to the map
             } else {
                 markers.clearLayers(); // Clear existing markers before adding new ones
@@ -71,8 +77,8 @@
                 if (markers.getLayers().length > 0) {
                     map.fitBounds(bounds, { padding: [50, 50] }); // Fit map to all markers with some padding
                 } else {
-                     // If no valid markers, set a default view or handle as needed
-                     map.setView([37.12, -8.58], 12);
+                    // If no valid markers, set a default view or handle as needed
+                    map.setView([37.12, -8.58], 12);
                 }
 
             } else {
