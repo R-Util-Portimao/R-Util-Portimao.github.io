@@ -8,74 +8,102 @@
         #map {
             height: 400px;
             width: 100%;
-            margin-top: 20px;
+            margin-top: 0px; /* Adjust as needed */
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: sans-serif;
+        }
+        h1 {
+            display: none; /* Hide the title as requested */
         }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 <body>
-    <h1>Location Map (Portugal)</h1>
     <div id="map"></div>
 
     <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
         let map = null;
-        let marker = null;
+        let markers = L.featureGroup(); // Use a feature group to manage multiple markers
 
-        // Function to initialize and update the map
-        function displayMap(lat, lng, postalCode = '') {
-            if (map) {
-                map.remove(); // Remove existing map if it exists
-            }
-            map = L.map('map').setView([lat, lng], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-
-            if (marker) {
-                marker.setLatLng([lat, lng]);
+        // Function to initialize and update the map with multiple locations
+        function displayMapWithLocations(locations) {
+            if (!map) {
+                // Initialize map only once if it doesn't exist
+                map = L.map('map').setView([37.12, -8.58], 12); // Default view, maybe Alvor area
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+                markers.addTo(map); // Add the feature group to the map
             } else {
-                marker = L.marker([lat, lng]).addTo(map);
+                markers.clearLayers(); // Clear existing markers before adding new ones
             }
 
-            if (postalCode) {
-                marker.bindPopup(`<b>${postalCode}</b><br>Lat: ${lat}<br>Lon: ${lng}`).openPopup();
+            if (locations && locations.length > 0) {
+                let bounds = L.latLngBounds([]); // To fit all markers on the map
+
+                locations.forEach(location => {
+                    if (location.latitude && location.longitude) {
+                        const lat = location.latitude;
+                        const lon = location.longitude;
+                        const postalCode = location.cp || 'N/A';
+                        const title = location.title || 'No Title';
+                        const address = location.moradaCompleta || 'No Address';
+                        const logoUrl = location.logotipo;
+
+                        let popupContent = `<b>${title}</b><br>${address}<br>CP: ${postalCode}<br>Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}`;
+
+                        if (logoUrl) {
+                            popupContent += `<br><img src="${logoUrl}" style="max-width:100px; max-height:100px; margin-top: 5px;">`;
+                        }
+
+                        const marker = L.marker([lat, lon])
+                            .bindPopup(popupContent);
+                        
+                        markers.addLayer(marker); // Add marker to the feature group
+                        bounds.extend([lat, lon]); // Extend bounds to include this marker
+                    }
+                });
+
+                if (markers.getLayers().length > 0) {
+                    map.fitBounds(bounds, { padding: [50, 50] }); // Fit map to all markers with some padding
+                } else {
+                     // If no valid markers, set a default view or handle as needed
+                     map.setView([37.12, -8.58], 12);
+                }
+
             } else {
-                marker.bindPopup(`Lat: ${lat}<br>Lon: ${lng}`).openPopup();
+                console.log("No valid locations received to display on the map.");
+                // Optionally, display a message on the map or set a default view
+                map.setView([37.12, -8.58], 12); // Default view if no locations
             }
-            map.setView([lat, lng], 13); // Center map on new location
         }
 
-        // Example of how Wix might pass data (you'll adapt this part)
-        // For demonstration, let's assume Wix provides a function or object with coordinates
-        // Replace this with how Wix will actually pass you the lat/lon.
-        // For example, if Wix sets global variables, or uses a message passing mechanism.
+        // Listen for messages from the Wix parent frame
+        window.addEventListener('message', (event) => {
+            // No need for event.origin check here as Wix's $w().postMessage handles the origin securely.
+            // If you were using window.parent.postMessage() with a targetOrigin,
+            // then event.origin check would be crucial.
+            
+            try {
+                const data = JSON.parse(event.data);
+                if (Array.isArray(data)) { // Expecting an array of location objects
+                    console.log("Received data from Wix:", data);
+                    displayMapWithLocations(data);
+                } else {
+                    console.warn("Received unexpected data format from Wix:", data);
+                }
+            } catch (e) {
+                console.error("Error parsing message from Wix:", e, event.data);
+            }
+        });
 
-        // Placeholder: How you might receive data from Wix
-        // Let's simulate receiving data after the page loads.
-        window.onload = () => {
-            // This is where you would receive the latitude and longitude from Wix.
-            // For example, if Wix is embedding this HTML and passing data via a global variable:
-            // const latFromWix = window.wixLat;
-            // const lonFromWix = window.wixLon;
-            // const postalCodeFromWix = window.wixPostalCode;
-
-            // For now, let's use example coordinates for Alvor, Portugal (since that's your current location context)
-            const exampleLat = 37.1293; // Latitude for Alvor
-            const exampleLon = -8.5997; // Longitude for Alvor
-            const examplePostalCode = "8500-050 Alvor"; // Example postal code
-
-            // Call displayMap with the received coordinates
-            displayMap(exampleLat, exampleLon, examplePostalCode);
-        };
-
-        // If Wix is interacting via postMessage, you might listen like this:
-        // window.addEventListener('message', (event) => {
-        //     // Ensure the message is from a trusted source if implementing cross-origin communication
-        //     if (event.data && event.data.type === 'displayMap' && event.data.lat && event.data.lon) {
-        //         displayMap(event.data.lat, event.data.lon, event.data.postalCode || '');
-        //     }
-        // });
+        // Optional: Send a message back to Wix when the iframe is ready to receive data
+        // This can be useful for Wix to know when to send the initial data.
+        window.parent.postMessage("iframeReady", "*"); // Adjust "*" to your Wix site's domain for security
     </script>
 </body>
 </html>
