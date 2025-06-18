@@ -1,225 +1,102 @@
-!DOCTYPE html>
-<html lang="pt"> <!-- Changed language to Portuguese based on content -->
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Localizações</title>
-    <!-- Favicon for better user experience -->
-    <link rel="icon" href="https://placehold.co/32x32/0056b3/ffffff?text=Map" type="image/x-icon">
-
-    <!-- Leaflet CSS - Corrected integrity attribute based on console errors -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-        crossorigin=""/>
+    <title>Postal Code Geocoder</title>
     <style>
-        /* Base styles for the body to ensure full viewport height */
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            height: 100vh; /* Occupy 100% of the viewport height */
-            overflow: hidden; /* Prevent body scrolling if map takes full height */
-        }
-
-        /* Styles for the map container */
         #map {
-            height: 100%; /* Map will fill the available space */
+            height: 400px;
             width: 100%;
-            background-color: #f0f0f0; /* Background while the map loads */
-            border-radius: 8px; /* Slightly rounded corners for aesthetics */
-            overflow: hidden; /* Ensure map tiles don't spill outside border-radius */
-        }
-
-        /* Styles for the loading message */
-        #loading-message {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-            font-size: 1.2em;
-            background-color: #fff;
-            border-bottom: 1px solid #ddd;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            position: absolute; /* Position over the map */
-            top: 0;
-            left: 0;
-            width: 100%;
-            box-sizing: border-box; /* Include padding in width calculation */
-            z-index: 1000; /* Ensure it's above the map */
-        }
-
-        /* Styles for the info window content (popup markers) */
-        .info-window-content {
-            font-family: Arial, sans-serif;
-            line-height: 1.5;
-            padding: 5px; /* Add some padding inside the popup */
-        }
-        .info-window-content h3 {
-            margin: 0 0 5px 0;
-            color: #0056b3;
-            font-size: 1.1em;
-            border-bottom: 1px solid #eee; /* Subtle separator */
-            padding-bottom: 3px;
-        }
-        .info-window-content p {
-            margin: 0;
-            font-size: 0.9em;
-            color: #555;
-        }
-        .info-window-content img {
-            max-width: 80px;
-            max-height: 80px;
-            margin-bottom: 5px;
-            border-radius: 4px;
-            object-fit: contain; /* Ensure image fits without distortion */
-            display: block; /* Ensures proper spacing */
-            margin-left: auto; /* Center image */
-            margin-right: auto; /* Center image */
+            margin-top: 20px;
         }
     </style>
-    <!-- Leaflet JavaScript - Corrected integrity attribute based on console errors -->
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-        crossorigin=""></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
 </head>
 <body>
+    <h1>Postal Code to Coordinates</h1>
+    <input type="text" id="postalCodeInput" placeholder="Enter Postal Code (e.g., 8500-050)">
+    <select id="countrySelect">
+        <option value="pt">Portugal</option>
+        <option value="us">United States</option>
+        <option value="gb">United Kingdom</option>
+    </select>
+    <button id="geocodeButton">Geocode</button>
+    <p>Latitude: <span id="latitude"></span></p>
+    <p>Longitude: <span id="longitude"></span></p>
     <div id="map"></div>
-    <div id="loading-message">Aguardando dados do Wix para carregar o mapa...</div> <!-- Updated message for pt-BR -->
 
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
     <script>
-        // Global variables for map and markers
-        let map;
-        const markers = L.featureGroup(); // Changed to const as the group itself is not reassigned
-        const loadingMessageElement = document.getElementById('loading-message'); // Cached DOM element
+        // Replace with your actual Geoapify API Key
+        const GEOAPIFY_API_KEY = 'e4c64a3a1721414ca9747bde14c59e2e';
 
-        /**
-         * Initializes the Leaflet map.
-         * Sets the initial view and adds the OpenStreetMap tile layer.
-         */
-        function initMap() {
-            // Define the initial center of the map (Alvor, Portugal)
-            const alvor = { lat: 37.135, lng: -8.586 }; // Approximate coordinates for Alvor
+        const postalCodeInput = document.getElementById('postalCodeInput');
+        const countrySelect = document.getElementById('countrySelect');
+        const geocodeButton = document.getElementById('geocodeButton');
+        const latitudeSpan = document.getElementById('latitude');
+        const longitudeSpan = document.getElementById('longitude');
+        const mapContainer = document.getElementById('map');
 
-            // Initialize map with a center view and a zoom level
-            map = L.map('map').setView([alvor.lat, alvor.lng], 10);
+        let map = null;
+        let marker = null;
 
-            // Add OpenStreetMap tile layer to the map
+        function initMap(lat, lng) {
+            if (map) {
+                map.remove(); // Remove existing map if it exists
+            }
+            map = L.map('map').setView([lat, lng], 13);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
-
-            // Add the feature group (where markers will be added) to the map
-            markers.addTo(map);
-
-            // Hide the loading message once the map is initialized
-            loadingMessageElement.style.display = 'none';
         }
 
-        // Initialize the map when the script first loads
-        initMap();
+        geocodeButton.addEventListener('click', async () => {
+            let postalCode = postalCodeInput.value.trim();
+            const countryCode = countrySelect.value;
 
-        /**
-         * Adds markers to the map based on the provided location data.
-         * It performs geocoding for each address to get latitude and longitude.
-         * @param {Array<Object>} locations - An array of location objects, each containing address details.
-         */
-        async function addMarkersToMap(locations) {
-            markers.clearLayers();
-            loadingMessageElement.style.display = 'none';
-        
-            if (!map) {
-                console.error("Mapa não inicializado.");
-                loadingMessageElement.textContent = "Erro: O mapa não carregou.";
-                loadingMessageElement.style.display = 'block';
+            // **Modification starts here**
+            // If the postal code contains a space, take only the part before the first space
+            if (postalCode.includes(' ')) {
+                postalCode = postalCode.split(' ')[0];
+            }
+            // **Modification ends here**
+
+            if (!postalCode) {
+                alert('Please enter a postal code.');
                 return;
             }
-        
-            if (!locations || locations.length === 0) {
-                loadingMessageElement.textContent = "Nenhum dado de localização recebido.";
-                loadingMessageElement.style.display = 'block';
-                return;
-            }
-        
-            const latLngs = [];
-            let failedGeocodes = 0;
-        
-            for (const item of locations) {
-                // Construct the full address string for geocoding
-                // IMPORTANT: Ensure 'item.cidade' exists in your Wix data if you use it.
-                const fullAddress = `${item.moradaCompleta || ''}, ${item.cidade || ''}, ${item.cp || ''}, Portugal`.trim();
-        
-                if (!fullAddress || fullAddress.length < 5) {
-                    console.warn(`Endereço inválido (curto/vazio) para: ${item.title || 'Título Desconhecido'}`);
-                    failedGeocodes++;
-                    continue;
-                }
-        
-                try {
-                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`);
-                    const data = await response.json();
-        
-                    if (data && data.length > 0) {
-                        const lat = parseFloat(data[0].lat);
-                        const lng = parseFloat(data[0].lon);
-                        const location = L.latLng(lat, lng);
-        
-                        const contentString = `
-                            <div class="info-window-content">
-                                ${item.logotipo ? `<img src="${item.logotipo}" alt="Logo">` : ''}
-                                <h3>${item.title || 'Título Desconhecido'}</h3>
-                                <p>${fullAddress}</p>
-                            </div>
-                        `;
-        
-                        const marker = L.marker(location).bindPopup(contentString);
-                        markers.addLayer(marker);
-                        latLngs.push(location);
-        
-                    } else {
-                        console.warn(`Não foi possível geocodificar o endereço para: ${item.title || 'Título Desconhecido'} (${fullAddress})`);
-                        failedGeocodes++;
-                    }
-                } catch (e) {
-                    console.error(`Erro na geocodificação para ${fullAddress}:`, e);
-                    failedGeocodes++;
-                }
-            }
-        
-            if (latLngs.length > 0) {
-                map.fitBounds(L.latLngBounds(latLngs));
-                if (failedGeocodes > 0) {
-                    loadingMessageElement.textContent = `Mapa carregado. ${failedGeocodes} localização(ões) não pôde(ram) ser encontrada(s).`;
-                    loadingMessageElement.style.display = 'block';
-                }
-            } else {
-                loadingMessageElement.textContent = `Nenhuma localização válida encontrada para exibir no mapa. Total de ${failedGeocodes} falhas.`;
-                loadingMessageElement.style.display = 'block';
-            }
-        }
 
-        /**
-         * Listener for messages received from the parent window (Wix).
-         * This is the entry point for receiving location data.
-         */
-        window.onmessage = (event) => {
-            // A verificação da origem dos dados foi removida conforme solicitado.
-            // Atenção: Em um ambiente de produção, a verificação da origem é uma importante medida de segurança.
-            // Considere reativá-la se houver preocupações de segurança com os dados recebidos.
             try {
-                const data = JSON.parse(event.data);
-                console.log("Dados recebidos no iframe:", data); // Para fins de depuração
+                const response = await fetch(`https://api.geoapify.com/v1/geocode/search?postcode=${postalCode}&countrycode=${countryCode}&apiKey=${GEOAPIFY_API_KEY}`);
+                const data = await response.json();
 
-                // Chama a função para adicionar marcadores ao mapa com os dados recebidos
-                addMarkersToMap(data);
+                if (data.features && data.features.length > 0) {
+                    const firstFeature = data.features[0];
+                    const lat = firstFeature.properties.lat;
+                    const lon = firstFeature.properties.lon;
 
+                    latitudeSpan.textContent = lat;
+                    longitudeSpan.textContent = lon;
+
+                    initMap(lat, lon); // Initialize or update map
+                    if (marker) {
+                        marker.setLatLng([lat, lon]);
+                    } else {
+                        marker = L.marker([lat, lon]).addTo(map)
+                            .bindPopup(`<b>${postalCode}</b><br>Lat: ${lat}<br>Lon: ${lon}`).openPopup();
+                    }
+                    map.setView([lat, lon], 13); // Center map on new location
+                } else {
+                    latitudeSpan.textContent = 'N/A';
+                    longitudeSpan.textContent = 'N/A';
+                    alert('Postal code not found or invalid.');
+                }
             } catch (error) {
-                // Lida com erros durante a análise da mensagem ou processamento de dados
-                console.error("Erro ao analisar mensagem do Wix:", error);
-                loadingMessageElement.textContent = "Erro ao processar dados.";
-                loadingMessageElement.style.display = 'block';
+                console.error('Error geocoding postal code:', error);
+                alert('An error occurred while geocoding. Please try again.');
             }
-        };
+        });
     </script>
 </body>
 </html>
