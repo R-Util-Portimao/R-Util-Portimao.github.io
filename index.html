@@ -3,123 +3,183 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wix Data Display</title>
+    <title>Mapa de Localizações</title>
     <style>
         body {
+            margin: 0;
+            padding: 0;
             font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f4f4f4;
-            color: #333;
-        }
-        .container {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-            gap: 20px;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-        .item-card {
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 15px;
-            background-color: #fff;
-            text-align: center;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            height: 100vh; /* Ocupar 100% da altura da viewport */
         }
-        .item-card h3 {
-            margin-top: 0;
-            color: #0056b3;
-            font-size: 1.2em;
-            word-break: break-word; /* Prevents long titles from overflowing */
+        #map {
+            height: 100%; /* O mapa vai preencher o espaço disponível */
+            width: 100%;
+            background-color: #f0f0f0; /* Fundo enquanto o mapa carrega */
         }
-        .item-card p {
-            font-size: 0.9em;
-            color: #666;
-            word-break: break-word; /* Prevents long addresses from overflowing */
-        }
-        .item-card .logo {
-            max-width: 100%;
-            height: auto;
-            max-height: 120px; /* Limit image height */
-            object-fit: contain; /* Ensures the image fits within its bounds without cropping */
-            margin-bottom: 10px;
-            border-radius: 4px;
-        }
-        .no-data {
+        #loading-message {
             text-align: center;
-            grid-column: 1 / -1; /* Center the message in the grid */
-            color: #888;
             padding: 20px;
+            color: #666;
+            font-size: 1.2em;
+        }
+        .info-window-content {
+            font-family: Arial, sans-serif;
+            line-height: 1.5;
+        }
+        .info-window-content h3 {
+            margin: 0 0 5px 0;
+            color: #0056b3;
             font-size: 1.1em;
         }
-        @media (max-width: 600px) {
-            .container {
-                grid-template-columns: 1fr;
-            }
+        .info-window-content p {
+            margin: 0;
+            font-size: 0.9em;
+            color: #555;
+        }
+        .info-window-content img {
+            max-width: 80px;
+            max-height: 80px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            object-fit: contain;
         }
     </style>
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_Maps_API_KEY&callback=initMap&libraries=places"></script>
 </head>
 <body>
-    <h1>Data from Wix</h1>
-    <div id="data-container" class="container">
-        <p class="no-data">Waiting for data from Wix...</p>
-    </div>
+    <div id="map"></div>
+    <div id="loading-message">Waiting for data from Wix to load map...</div>
 
     <script>
+        let map;
+        let geocoder;
+        let markers = []; // Para armazenar os marcadores e gerenciá-los
+        let infoWindow; // Para exibir informações quando um marcador é clicado
+
+        // Esta função é chamada pela Google Maps API quando ela está pronta
+        function initMap() {
+            // Define o centro inicial do mapa (Alvor, Portugal)
+            const alvor = { lat: 37.135, lng: -8.586 }; // Aproximado para Alvor
+
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 10, // Zoom inicial
+                center: alvor,
+                mapTypeControl: false, // Opcional: remover o controle de tipo de mapa
+                streetViewControl: false // Opcional: remover o Street View
+            });
+
+            geocoder = new google.maps.Geocoder();
+            infoWindow = new google.maps.InfoWindow(); // Cria uma instância da InfoWindow
+
+            // Ocultar mensagem de carregamento se o mapa já carregou antes dos dados
+            document.getElementById('loading-message').style.display = 'none';
+        }
+
+        // Função para adicionar marcadores no mapa
+        async function addMarkersToMap(locations) {
+            // Limpa marcadores anteriores (se houver)
+            markers.forEach(marker => marker.setMap(null));
+            markers = [];
+
+            // Se a mensagem de carregamento ainda estiver visível, esconda-a
+            document.getElementById('loading-message').style.display = 'none';
+
+            if (!map || !geocoder) {
+                console.error("Mapa ou Geocoder não inicializado. Verifique sua chave de API e callback.");
+                document.getElementById('loading-message').textContent = "Erro: O mapa não carregou. Verifique a chave da API.";
+                document.getElementById('loading-message').style.display = 'block';
+                return;
+            }
+
+            if (!locations || locations.length === 0) {
+                document.getElementById('loading-message').textContent = "Nenhum dado de localização recebido.";
+                document.getElementById('loading-message').style.display = 'block';
+                return;
+            }
+
+            const bounds = new google.maps.LatLngBounds(); // Para ajustar o zoom do mapa
+
+            for (const item of locations) {
+                const fullAddress = `${item.moradaCompleta || ''}, ${item.cp || ''}, Portugal`.trim();
+
+                if (!fullAddress || fullAddress.length < 5) {
+                    console.warn(`Endereço inválido para geocodificação: ${item.title || 'Título Desconhecido'}`);
+                    continue;
+                }
+
+                try {
+                    const geocodeResult = await geocoder.geocode({ 'address': fullAddress });
+
+                    if (geocodeResult.results[0]) {
+                        const location = geocodeResult.results[0].geometry.location;
+
+                        const marker = new google.maps.Marker({
+                            map: map,
+                            position: location,
+                            title: item.title || 'Local Desconhecido'
+                        });
+
+                        // Conteúdo da InfoWindow
+                        const contentString = `
+                            <div class="info-window-content">
+                                ${item.logotipo ? `<img src="${item.logotipo}" alt="Logo">` : ''}
+                                <h3>${item.title || 'Título Desconhecido'}</h3>
+                                <p>${fullAddress}</p>
+                            </div>
+                        `;
+
+                        // Adiciona um listener de clique ao marcador
+                        marker.addListener("click", () => {
+                            infoWindow.setContent(contentString);
+                            infoWindow.open(map, marker);
+                        });
+
+                        markers.push(marker); // Adiciona o marcador ao array
+                        bounds.extend(location); // Estende os limites para incluir este marcador
+
+                    } else {
+                        console.warn(`Não foi possível geocodificar o endereço para: ${item.title} (${fullAddress})`);
+                    }
+                } catch (e) {
+                    console.error(`Erro na geocodificação para ${fullAddress}:`, e);
+                }
+            }
+
+            // Ajusta o mapa para mostrar todos os marcadores
+            if (markers.length > 0) {
+                map.fitBounds(bounds);
+            } else {
+                document.getElementById('loading-message').textContent = "Nenhum local válido encontrado para exibir no mapa.";
+                document.getElementById('loading-message').style.display = 'block';
+            }
+        }
+
+        // Listener para mensagens do Wix (igual ao seu anterior, mas chama a função do mapa)
         window.onmessage = (event) => {
             // AVISO DE SEGURANÇA: Esta condição de origem foi removida para depuração.
             // Para produção, é ALTAMENTE RECOMENDADO reativar esta verificação
             // e garantir que event.origin corresponda ao seu domínio Wix publicado.
-            // Exemplo de como reativar:
-            // if (event.origin === "https://rutilportimao.wixsite.com" || event.origin === "https://www.seudominio.com") {
-            //    // ... seu código seguro aqui
-            // } else {
-            //    console.warn("Message received from unexpected origin (blocked):", event.origin);
-            // }
-
+            // if (event.origin === "https://rutilportimao.wixsite.com") { // Exemplo
             try {
                 const data = JSON.parse(event.data);
-                const container = document.getElementById('data-container');
-                container.innerHTML = ''; // Clear initial message
+                console.log("Dados recebidos no iframe:", data); // Para depuração
 
-                if (data && Array.isArray(data) && data.length > 0) {
-                    data.forEach(item => {
-                        const card = document.createElement('div');
-                        card.classList.add('item-card');
+                // Chama a função para adicionar marcadores ao mapa
+                addMarkersToMap(data);
 
-                        if (item.logotipo) {
-                            const img = document.createElement('img');
-                            img.src = item.logotipo;
-                            img.alt = item.title ? `${item.title} logo` : 'Logo';
-                            img.classList.add('logo');
-                            card.appendChild(img);
-                        }
-
-                        const title = document.createElement('h3');
-                        title.textContent = item.title || 'No Title';
-                        card.appendChild(title);
-
-                        const address = document.createElement('p');
-                        address.textContent = `${item.moradaCompleta || ''} ${item.cp || ''}`.trim();
-                        if (address.textContent === "") {
-                            address.textContent = "No Address Info";
-                        }
-                        card.appendChild(address);
-
-                        container.appendChild(card);
-                    });
-                } else {
-                    container.innerHTML = '<p class="no-data">No data received or data is empty.</p>';
-                }
             } catch (error) {
                 console.error("Error parsing message from Wix:", error);
-                document.getElementById('data-container').innerHTML = '<p class="no-data" style="color: red;">Error loading data.</p>';
+                document.getElementById('loading-message').textContent = "Erro ao processar dados.";
+                document.getElementById('loading-message').style.display = 'block';
             }
+            // } else {
+            //     console.warn("Message received from unexpected origin (blocked):", event.origin);
+            //     // Opcional: mostrar mensagem de erro ou aviso ao usuário
+            //     document.getElementById('loading-message').textContent = "Erro de segurança: origem de dados inesperada.";
+            //     document.getElementById('loading-message').style.display = 'block';
+            // }
         };
     </script>
 </body>
