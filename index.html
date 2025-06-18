@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="pt"> <!-- Changed language to Portuguese based on content -->
 <head>
     <meta charset="UTF-8">
@@ -210,30 +210,20 @@
          * This is the entry point for receiving location data.
          */
         window.onmessage = (event) => {
-            // SECURITY WARNING:
-            // For production, it is HIGHLY RECOMMENDED to enable this origin check.
-            // Replace "YOUR_WIX_SITE_DOMAIN_HERE" with the exact domain of your published Wix site.
-            // Example: "https://rutilportimao.wixsite.com"
-            const expectedOrigin = "YOUR_WIX_SITE_DOMAIN_HERE"; // IMPORTANT: Update this in production!
+            // A verificação da origem dos dados foi removida conforme solicitado.
+            // Atenção: Em um ambiente de produção, a verificação da origem é uma importante medida de segurança.
+            // Considere reativá-la se houver preocupações de segurança com os dados recebidos.
+            try {
+                const data = JSON.parse(event.data);
+                console.log("Dados recebidos no iframe:", data); // Para fins de depuração
 
-            if (event.origin === expectedOrigin || window.location.hostname === "localhost") { // Allow localhost for local testing
-                try {
-                    const data = JSON.parse(event.data);
-                    console.log("Dados recebidos no iframe:", data); // For debugging purposes
+                // Chama a função para adicionar marcadores ao mapa com os dados recebidos
+                addMarkersToMap(data);
 
-                    // Call the function to add markers to the map with the received data
-                    addMarkersToMap(data);
-
-                } catch (error) {
-                    // Handle errors during message parsing or data processing
-                    console.error("Erro ao analisar mensagem do Wix:", error);
-                    loadingMessageElement.textContent = "Erro ao processar dados.";
-                    loadingMessageElement.style.display = 'block';
-                }
-            } else {
-                // Warn if the message comes from an unexpected origin (security concern)
-                console.warn("Mensagem recebida de origem inesperada (bloqueada):", event.origin);
-                loadingMessageElement.textContent = "Erro de segurança: origem de dados inesperada.";
+            } catch (error) {
+                // Lida com erros durante a análise da mensagem ou processamento de dados
+                console.error("Erro ao analisar mensagem do Wix:", error);
+                loadingMessageElement.textContent = "Erro ao processar dados.";
                 loadingMessageElement.style.display = 'block';
             }
         };
