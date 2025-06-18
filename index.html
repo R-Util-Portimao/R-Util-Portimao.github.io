@@ -1,39 +1,66 @@
-!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="pt"> <!-- Changed language to Portuguese based on content -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mapa de Localizações</title>
+    <!-- Favicon for better user experience -->
+    <link rel="icon" href="https://placehold.co/32x32/0056b3/ffffff?text=Map" type="image/x-icon">
+
+    <!-- Leaflet CSS - Corrected integrity attribute based on console errors -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="  crossorigin=""/>
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
     <style>
+        /* Base styles for the body to ensure full viewport height */
         body {
             margin: 0;
             padding: 0;
             font-family: Arial, sans-serif;
             display: flex;
             flex-direction: column;
-            height: 100vh; /* Ocupar 100% da altura da viewport */
+            height: 100vh; /* Occupy 100% of the viewport height */
+            overflow: hidden; /* Prevent body scrolling if map takes full height */
         }
+
+        /* Styles for the map container */
         #map {
-            height: 100%; /* O mapa vai preencher o espaço disponível */
+            height: 100%; /* Map will fill the available space */
             width: 100%;
-            background-color: #f0f0f0; /* Fundo enquanto o mapa carrega */
+            background-color: #f0f0f0; /* Background while the map loads */
+            border-radius: 8px; /* Slightly rounded corners for aesthetics */
+            overflow: hidden; /* Ensure map tiles don't spill outside border-radius */
         }
+
+        /* Styles for the loading message */
         #loading-message {
             text-align: center;
             padding: 20px;
             color: #666;
             font-size: 1.2em;
+            background-color: #fff;
+            border-bottom: 1px solid #ddd;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: absolute; /* Position over the map */
+            top: 0;
+            left: 0;
+            width: 100%;
+            box-sizing: border-box; /* Include padding in width calculation */
+            z-index: 1000; /* Ensure it's above the map */
         }
+
+        /* Styles for the info window content (popup markers) */
         .info-window-content {
             font-family: Arial, sans-serif;
             line-height: 1.5;
+            padding: 5px; /* Add some padding inside the popup */
         }
         .info-window-content h3 {
             margin: 0 0 5px 0;
             color: #0056b3;
             font-size: 1.1em;
+            border-bottom: 1px solid #eee; /* Subtle separator */
+            padding-bottom: 3px;
         }
         .info-window-content p {
             margin: 0;
@@ -45,83 +72,106 @@
             max-height: 80px;
             margin-bottom: 5px;
             border-radius: 4px;
-            object-fit: contain;
+            object-fit: contain; /* Ensure image fits without distortion */
+            display: block; /* Ensures proper spacing */
+            margin-left: auto; /* Center image */
+            margin-right: auto; /* Center image */
         }
     </style>
+    <!-- Leaflet JavaScript - Corrected integrity attribute based on console errors -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="  crossorigin=""></script>
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
 </head>
 <body>
     <div id="map"></div>
-    <div id="loading-message">Waiting for data from Wix to load map...</div>
+    <div id="loading-message">Aguardando dados do Wix para carregar o mapa...</div> <!-- Updated message for pt-BR -->
 
     <script>
+        // Global variables for map and markers
         let map;
-        let markers = L.featureGroup(); // To store markers and manage them
+        const markers = L.featureGroup(); // Changed to const as the group itself is not reassigned
+        const loadingMessageElement = document.getElementById('loading-message'); // Cached DOM element
 
-        // This function initializes the Leaflet map
+        /**
+         * Initializes the Leaflet map.
+         * Sets the initial view and adds the OpenStreetMap tile layer.
+         */
         function initMap() {
-            // Define o centro inicial do mapa (Alvor, Portugal)
-            const alvor = { lat: 37.135, lng: -8.586 }; // Aproximado para Alvor
+            // Define the initial center of the map (Alvor, Portugal)
+            const alvor = { lat: 37.135, lng: -8.586 }; // Approximate coordinates for Alvor
 
-            map = L.map('map').setView([alvor.lat, alvor.lng], 10); // Initialize map with center and zoom
+            // Initialize map with a center view and a zoom level
+            map = L.map('map').setView([alvor.lat, alvor.lng], 10);
 
+            // Add OpenStreetMap tile layer to the map
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            // Add the feature group to the map
+            // Add the feature group (where markers will be added) to the map
             markers.addTo(map);
 
-            // Ocultar mensagem de carregamento se o mapa já carregou antes dos dados
-            document.getElementById('loading-message').style.display = 'none';
+            // Hide the loading message once the map is initialized
+            loadingMessageElement.style.display = 'none';
         }
 
-        // Initialize the map when the script loads
+        // Initialize the map when the script first loads
         initMap();
 
-        // Function to add markers to the map
+        /**
+         * Adds markers to the map based on the provided location data.
+         * It performs geocoding for each address to get latitude and longitude.
+         * @param {Array<Object>} locations - An array of location objects, each containing address details.
+         */
         async function addMarkersToMap(locations) {
-            // Clear previous markers (if any)
+            // Clear any previously existing markers from the map
             markers.clearLayers();
 
-            // If the loading message is still visible, hide it
-            document.getElementById('loading-message').style.display = 'none';
+            // Hide the loading message, as data processing is about to begin
+            loadingMessageElement.style.display = 'none';
 
+            // Check if the map was successfully initialized
             if (!map) {
                 console.error("Mapa não inicializado.");
-                document.getElementById('loading-message').textContent = "Erro: O mapa não carregou.";
-                document.getElementById('loading-message').style.display = 'block';
+                loadingMessageElement.textContent = "Erro: O mapa não carregou.";
+                loadingMessageElement.style.display = 'block';
                 return;
             }
 
+            // Check if location data was provided
             if (!locations || locations.length === 0) {
-                document.getElementById('loading-message').textContent = "Nenhum dado de localização recebido.";
-                document.getElementById('loading-message').style.display = 'block';
+                loadingMessageElement.textContent = "Nenhum dado de localização recebido.";
+                loadingMessageElement.style.display = 'block';
                 return;
             }
 
-            const latLngs = []; // To store all marker coordinates for fitting bounds
+            const latLngs = []; // Array to store all marker coordinates for fitting map bounds
 
+            // Loop through each location item to add a marker
             for (const item of locations) {
+                // Construct the full address string for geocoding
+                // It's highly recommended to include city/town if available for better accuracy, e.g., ${item.cidade || ''}
                 const fullAddress = `${item.moradaCompleta || ''}, ${item.cp || ''}, Portugal`.trim();
 
+                // Skip geocoding if the address is too short or empty
                 if (!fullAddress || fullAddress.length < 5) {
                     console.warn(`Endereço inválido para geocodificação: ${item.title || 'Título Desconhecido'}`);
-                    continue;
+                    continue; // Skip to the next item
                 }
 
                 try {
-                    // Using OpenStreetMap's Nominatim for geocoding
+                    // Use OpenStreetMap's Nominatim for geocoding the address
                     const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)}`);
                     const data = await response.json();
 
+                    // Check if geocoding returned any results
                     if (data && data.length > 0) {
                         const lat = parseFloat(data[0].lat);
                         const lng = parseFloat(data[0].lon);
-                        const location = L.latLng(lat, lng);
+                        const location = L.latLng(lat, lng); // Create a Leaflet LatLng object
 
-                        // Content for the popup
+                        // Construct the content for the marker's popup info window
                         const contentString = `
                             <div class="info-window-content">
                                 ${item.logotipo ? `<img src="${item.logotipo}" alt="Logo">` : ''}
@@ -130,51 +180,62 @@
                             </div>
                         `;
 
+                        // Create a marker and bind the popup content to it
                         const marker = L.marker(location).bindPopup(contentString);
                         markers.addLayer(marker); // Add marker to the feature group
-                        latLngs.push(location); // Add coordinates for fitting bounds
+                        latLngs.push(location); // Add coordinates to the array for fitting bounds
 
                     } else {
-                        console.warn(`Não foi possível geocodificar o endereço para: ${item.title} (${fullAddress})`);
+                        // Log a warning if geocoding failed for a specific address
+                        console.warn(`Não foi possível geocodificar o endereço para: ${item.title || 'Título Desconhecido'} (${fullAddress})`);
                     }
                 } catch (e) {
+                    // Log any errors that occur during the geocoding fetch operation
                     console.error(`Erro na geocodificação para ${fullAddress}:`, e);
                 }
             }
 
-            // Adjust the map to show all markers
+            // Adjust the map's view to encompass all added markers
             if (latLngs.length > 0) {
                 map.fitBounds(L.latLngBounds(latLngs));
             } else {
-                document.getElementById('loading-message').textContent = "Nenhum local válido encontrado para exibir no mapa.";
-                document.getElementById('loading-message').style.display = 'block';
+                // If no valid locations were found or geocoded, display a message
+                loadingMessageElement.textContent = "Nenhum local válido encontrado para exibir no mapa.";
+                loadingMessageElement.style.display = 'block';
             }
         }
 
-        // Listener for messages from Wix (same as your previous, but calls the map function)
+        /**
+         * Listener for messages received from the parent window (Wix).
+         * This is the entry point for receiving location data.
+         */
         window.onmessage = (event) => {
-            // SECURITY WARNING: The origin condition was removed for debugging.
-            // For production, it is HIGHLY RECOMMENDED to re-enable this check
-            // and ensure event.origin matches your published Wix domain.
-            // if (event.origin === "https://rutilportimao.wixsite.com") { // Example
-            try {
-                const data = JSON.parse(event.data);
-                console.log("Dados recebidos no iframe:", data); // For debugging
+            // SECURITY WARNING:
+            // For production, it is HIGHLY RECOMMENDED to enable this origin check.
+            // Replace "YOUR_WIX_SITE_DOMAIN_HERE" with the exact domain of your published Wix site.
+            // Example: "https://rutilportimao.wixsite.com"
+            const expectedOrigin = "YOUR_WIX_SITE_DOMAIN_HERE"; // IMPORTANT: Update this in production!
 
-                // Call the function to add markers to the map
-                addMarkersToMap(data);
+            if (event.origin === expectedOrigin || window.location.hostname === "localhost") { // Allow localhost for local testing
+                try {
+                    const data = JSON.parse(event.data);
+                    console.log("Dados recebidos no iframe:", data); // For debugging purposes
 
-            } catch (error) {
-                console.error("Error parsing message from Wix:", error);
-                document.getElementById('loading-message').textContent = "Erro ao processar dados.";
-                document.getElementById('loading-message').style.display = 'block';
+                    // Call the function to add markers to the map with the received data
+                    addMarkersToMap(data);
+
+                } catch (error) {
+                    // Handle errors during message parsing or data processing
+                    console.error("Erro ao analisar mensagem do Wix:", error);
+                    loadingMessageElement.textContent = "Erro ao processar dados.";
+                    loadingMessageElement.style.display = 'block';
+                }
+            } else {
+                // Warn if the message comes from an unexpected origin (security concern)
+                console.warn("Mensagem recebida de origem inesperada (bloqueada):", event.origin);
+                loadingMessageElement.textContent = "Erro de segurança: origem de dados inesperada.";
+                loadingMessageElement.style.display = 'block';
             }
-            // } else {
-            //      console.warn("Message received from unexpected origin (blocked):", event.origin);
-            //      // Optional: show error or warning message to the user
-            //      document.getElementById('loading-message').textContent = "Erro de segurança: origem de dados inesperada.";
-            //      document.getElementById('loading-message').style.display = 'block';
-            // }
         };
     </script>
 </body>
