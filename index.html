@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,26 +8,25 @@
     <style>
         /* Custom styles for Leaflet map */
         #map {
-            height: 100vh; /* Make map take full viewport height */
-            width: 100vw;  /* Make map take full viewport width */
-            border-radius: 0; /* No rounded corners if it takes full screen */
+            height: 100vh;
+            width: 100vw;
+            border-radius: 0;
         }
-        /* Inter font for better readability */
         body {
             font-family: "Inter", sans-serif;
-            margin: 0; /* Remove default body margin */
-            overflow: hidden; /* Prevent scrolling */
+            margin: 0;
+            overflow: hidden;
         }
         /* Style for the image inside the popup */
         .leaflet-popup-content img {
-            max-width: 100px; /* Adjust as needed */
+            max-width: 100px;
             height: auto;
             display: block;
             margin: 0 auto 5px auto; /* Center image and add bottom margin */
         }
         .leaflet-popup-content strong {
-            display: block; /* Make name take its own line */
-            text-align: center; /* Center the name */
+            display: block;
+            text-align: center;
         }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -42,53 +41,87 @@
     <div id="map" class="w-full h-full"></div>
 
     <script>
+        // Initialize Leaflet map
         let map = null;
         let markers = L.featureGroup();
 
+        /**
+         * Initializes the Leaflet map if it hasn't been initialized already.
+         * @param {number} lat - Latitude.
+         * @param {number} lon - Longitude.
+         * @param {number} zoom - Zoom level.
+         */
         function initializeMap(lat, lon, zoom = 15) {
             if (map === null) {
+                console.log("Initializing map...");
                 map = L.map('map').setView([lat, lon], zoom);
+
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19,
                     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }).addTo(map);
+
                 markers.addTo(map);
                 window.addEventListener('resize', () => {
                     map.invalidateSize();
                 });
+                console.log("Map initialized.");
             } else {
                 map.setView([lat, lon], zoom);
+                console.log("Map already initialized, setting new view.");
             }
         }
 
         /**
-         * Adds a marker to the map at the given coordinates with custom popup content
-         * showing only the name and image.
+         * Adds a marker to the map at the given coordinates with custom popup content.
          * @param {number} lat - Latitude.
          * @param {number} lon - Longitude.
          * @param {string} name - Name to display.
          * @param {string} imageUrl - URL of the image to display.
          */
-        function addMarker(lat, lon, name, imageUrl) { // Removed addressText parameter
+        function addMarker(lat, lon, name, imageUrl) {
+            if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
+                console.error("Invalid coordinates for marker:", name, "Lat:", lat, "Lon:", lon);
+                return; // Do not add marker if coordinates are invalid
+            }
+
+            console.log("Attempting to add marker for:", name, "at Lat:", lat, "Lon:", lon);
+
             let popupContent = ``;
 
             if (imageUrl) {
                 popupContent += `<img src="${imageUrl}" alt="${name || 'Image'}">`;
+            } else {
+                console.warn(`No image URL provided for marker: ${name}`);
             }
+
             if (name) {
                 popupContent += `<strong>${name}</strong>`;
+            } else {
+                console.warn(`No name provided for marker at: ${lat}, ${lon}`);
+            }
+
+            if (!imageUrl && !name) {
+                popupContent = `No info available`;
             }
 
             const newMarker = L.marker([lat, lon])
                 .bindPopup(popupContent)
-                .openPopup();
+                .openPopup(); // Open popup automatically for testing
             markers.addLayer(newMarker);
+            console.log("Marker added successfully for:", name);
         }
 
         function handleError(message) {
             console.error(message);
         }
 
+        /**
+         * Performs the geocoding request to Geoapify.
+         * @param {string} postalCode - The postal code.
+         * @param {string} address - The full address.
+         * @returns {Promise<object|null>} - Resolves with geocoded data or null on error/no results.
+         */
         async function geocodeAddress(postalCode, address) {
             const apiKey = "f92e5192f9c44001b7fbcabc7b92ddb7"; // <<-- REPLACE WITH YOUR GEOAPIFY API KEY
 
@@ -101,11 +134,11 @@
                 return null;
             }
 
-            const query = encodeURIComponent(`${address}, ${postalCode}`);
-            const geoapifyUrl = `https://api.geoapify.com/v1/geocode/search?text=${query}&apiKey=${apiKey}`;
+            const query = encodeURIComponent(`${address || ''}, ${postalCode || ''}`); // Ensure query is not "undefined, undefined"
+            const geoapifyUrl = `https://api.geoapify.com/v1/geocode/search?text=${query}&apiKey=${apiKey}&lang=pt`; // Added lang=pt for better results in Portuguese
 
+            console.log('Sending geocoding request for query:', query);
             try {
-                console.log('Sending geocoding request for query:', query);
                 const response = await fetch(geoapifyUrl);
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -116,10 +149,11 @@
 
                 if (data.features && data.features.length > 0) {
                     const firstFeature = data.features[0];
+                    console.log(`Geocoding successful for '${query}': Lat=${firstFeature.geometry.coordinates[1]}, Lon=${firstFeature.geometry.coordinates[0]}`);
                     return {
                         lon: firstFeature.geometry.coordinates[0],
                         lat: firstFeature.geometry.coordinates[1],
-                        formattedAddress: firstFeature.properties.formatted // Still get formattedAddress for logging/debug if needed, but not used in popup
+                        formattedAddress: firstFeature.properties.formatted
                     };
                 } else {
                     console.warn('No geocoding results found for:', query);
@@ -137,7 +171,8 @@
             mapElement.style.width = '100vw';
             mapElement.style.height = '100vh';
 
-            initializeMap(38.7223, -9.1393, 10); // Default to Lisbon
+            // Default map view: Alvor, Faro District, Portugal
+            initializeMap(37.1364, -8.5866, 12); // Coordenadas de Alvor
 
             window.addEventListener('message', async (event) => {
                 console.log('Message received from Wix:', event);
@@ -146,45 +181,50 @@
                     console.log('Parsed data from Wix:', receivedData);
 
                     if (Array.isArray(receivedData) && receivedData.length > 0) {
-                        markers.clearLayers();
+                        markers.clearLayers(); // Clear existing markers
 
                         const geocodingPromises = receivedData.map(async (item) => {
                             const cpFromWix = item.cp;
                             const moradaCompletaFromWix = item.moradaCompleta;
-                            const nameFromWix = item.name;
-                            const imageFromWix = item.image;
+                            const nameFromWix = item.name; // 'title' from Wix
+                            const imageFromWix = item.image; // 'logotipo' from Wix
 
-                            console.log(`Processing item: CP='${cpFromWix}', MoradaCompleta='${moradaCompletaFromWix}', Name='${nameFromWix}', Image='${imageFromWix}'`);
+                            console.log(`Processing item: Name='${nameFromWix}', CP='${cpFromWix}', MoradaCompleta='${moradaCompletaFromWix}'`);
 
                             if (cpFromWix || moradaCompletaFromWix) {
                                 const geoData = await geocodeAddress(cpFromWix || '', moradaCompletaFromWix || '');
                                 if (geoData) {
-                                    // Pass only name and image to addMarker
+                                    // Add marker if geocoding was successful
                                     addMarker(geoData.lat, geoData.lon, nameFromWix, imageFromWix);
-                                    return geoData;
+                                    return geoData; // Return data for potential future use (e.g., fitting bounds)
+                                } else {
+                                    console.warn(`Could not geocode address for item: ${nameFromWix}. No marker will be added.`);
                                 }
                             } else {
-                                handleError('An item received from Wix has missing "cp" or "moradaCompleta" fields.');
+                                handleError('An item received from Wix has missing "cp" and "moradaCompleta" fields. Cannot geocode.');
                             }
                             return null;
                         });
 
+                        // Wait for all geocoding requests to complete
                         const allGeoData = await Promise.all(geocodingPromises);
                         const validGeoData = allGeoData.filter(data => data !== null);
 
+                        // If there are valid geocoded locations, adjust map view to fit all markers
                         if (validGeoData.length > 0) {
                             const bounds = L.latLngBounds(validGeoData.map(data => [data.lat, data.lon]));
-                            map.fitBounds(bounds, { padding: [50, 50] });
+                            map.fitBounds(bounds, { padding: [50, 50] }); // Add some padding around the markers
+                            console.log("Map bounds fitted to markers.");
                         } else {
-                            handleError('No valid addresses were geocoded from the received Wix data.');
+                            handleError('No valid addresses were geocoded from the received Wix data. Map will show default view.');
                         }
 
                     } else {
-                        handleError('Received data from Wix, but it is not a valid array or is empty.');
+                        handleError('Received data from Wix, but it is not a valid array or is empty. Clearing map markers.');
                         markers.clearLayers();
                     }
                 } catch (e) {
-                    handleError('Error parsing message from Wix:', e);
+                    handleError('Error processing message from Wix:', e);
                 }
             });
         };
