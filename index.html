@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -9,13 +9,16 @@
     <style>
         /* Custom styles for Leaflet map */
         #map {
-            height: 500px; /* Set a default height for the map */
-            width: 100%;
-            border-radius: 0.5rem; /* Rounded corners for the map */
+            /* Set height dynamically, allowing it to fill available space */
+            height: 100vh; /* Make map take full viewport height */
+            width: 100vw;  /* Make map take full viewport width */
+            border-radius: 0; /* No rounded corners if it takes full screen */
         }
         /* Inter font for better readability */
         body {
             font-family: "Inter", sans-serif;
+            margin: 0; /* Remove default body margin */
+            overflow: hidden; /* Prevent scrolling */
         }
     </style>
     <!-- Leaflet CSS -->
@@ -27,17 +30,10 @@
             integrity="sha2d24-Rksm5Ren3j3N7YF+q3B/B/S/D1A4gT+zM0j8+8wR8PzD5d6C9d8S3sL5f6s7s8e"
             crossorigin=""></script>
 </head>
-<body class="bg-gradient-to-br from-blue-100 to-purple-200 min-h-screen flex items-center justify-center p-4">
+<body class="bg-white"> <!-- Changed body background to white, removed centering classes -->
 
-    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl transform transition-all duration-300 hover:scale-105">
-        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 text-center">Locating Address...</h1>
-
-        <!-- Status/Error Message Display -->
-        <div id="statusMessage" class="mt-6 p-3 rounded-lg text-sm text-center hidden"></div>
-
-        <!-- Map Container -->
-        <div id="map" class="mt-6 rounded-lg shadow-inner border border-gray-200"></div>
-    </div>
+    <!-- Map Container - now directly in the body -->
+    <div id="map" class="w-full h-full"></div>
 
     <script>
         // Initialize Leaflet map
@@ -53,7 +49,7 @@
          */
         function initializeMap(lat, lon, zoom = 15) {
             if (map === null) {
-                // Initialize map if it doesn't exist
+                // Initialize map if it doesn't exist, attached to the 'map' div
                 map = L.map('map').setView([lat, lon], zoom);
 
                 // Add OpenStreetMap tiles
@@ -61,6 +57,12 @@
                     maxZoom: 19,
                     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }).addTo(map);
+
+                // Ensure the map resizes correctly if the window changes size
+                window.addEventListener('resize', () => {
+                    map.invalidateSize();
+                });
+
             } else {
                 // If map already exists, just set the new view
                 map.setView([lat, lon], zoom);
@@ -85,31 +87,11 @@
                 .openPopup();
         }
 
-        /**
-         * Displays a status or error message to the user.
-         * @param {string} message - The message to display.
-         * @param {string} type - 'success', 'error', or 'info'.
-         */
-        function showStatus(message, type) {
-            const statusMessageDiv = document.getElementById('statusMessage');
-            statusMessageDiv.textContent = message;
-            statusMessageDiv.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
-
-            if (type === 'error') {
-                statusMessageDiv.classList.add('bg-red-100', 'text-red-700');
-            } else if (type === 'success') {
-                statusMessageDiv.classList.add('bg-green-100', 'text-green-700');
-            } else { // info
-                statusMessageDiv.classList.add('bg-blue-100', 'text-blue-700');
-            }
-            statusMessageDiv.classList.remove('hidden');
-        }
-
-        /**
-         * Hides the status message.
-         */
-        function hideStatus() {
-            document.getElementById('statusMessage').classList.add('hidden');
+        // Function to handle errors without displaying a separate message div
+        function handleError(message) {
+            console.error(message); // Log errors to the console
+            // Potentially add a small, discreet overlay message if absolutely necessary,
+            // but for "map only", the goal is no extra UI.
         }
 
         /**
@@ -121,15 +103,13 @@
             const apiKey = "YOUR_GEOAPIFY_API_KEY"; // <<-- REPLACE WITH YOUR GEOAPIFY API KEY
 
             if (!postalCode && !address) {
-                showStatus('No address or postal code provided in the URL. Please ensure Wix is sending the data correctly.', 'error');
+                handleError('No address or postal code provided in the URL. Please ensure Wix is sending the data correctly.');
                 return;
             }
             if (apiKey === "YOUR_GEOAPIFY_API_KEY" || apiKey === "") {
-                showStatus('Please replace "YOUR_GEOAPIFY_API_KEY" in the script with your actual Geoapify API key.', 'error');
+                handleError('Please replace "YOUR_GEOAPIFY_API_KEY" in the script with your actual Geoapify API key.');
                 return;
             }
-
-            showStatus('Locating address on map...', 'info');
 
             const query = encodeURIComponent(`${address}, ${postalCode}`);
             const geoapifyUrl = `https://api.geoapify.com/v1/geocode/search?text=${query}&apiKey=${apiKey}`;
@@ -149,23 +129,27 @@
 
                     initializeMap(lat, lon);
                     addMarker(lat, lon, formattedAddress || 'Location found');
-                    showStatus(`Location found: ${formattedAddress || `Lat: ${lat}, Lon: ${lon}`}`, 'success');
+                    // No success message needed as only map is visible
                 } else {
-                    showStatus('No results found for the given address and postal code. Please check the data sent from Wix.', 'error');
+                    handleError('No results found for the given address and postal code. Please check the data sent from Wix.');
                     if (marker !== null) {
                         map.removeLayer(marker); // Remove existing marker if search fails
                     }
                 }
             } catch (error) {
                 console.error('Error during geocoding:', error);
-                showStatus(`Failed to locate address: ${error.message}. Please check data from Wix and API key.`, 'error');
+                handleError(`Failed to locate address: ${error.message}. Please check data from Wix and API key.`);
             }
         }
 
         // Initialize map and handle URL parameters on window load
         window.onload = function() {
+            // Set initial map size to fill the screen
+            const mapElement = document.getElementById('map');
+            mapElement.style.width = '100vw';
+            mapElement.style.height = '100vh';
+
             initializeMap(38.7223, -9.1393, 10); // Default to Lisbon
-            showStatus('Waiting for address data from Wix...', 'info');
 
             const urlParams = new URLSearchParams(window.location.search);
             const cpFromUrl = urlParams.get('cp'); // Get postal code from URL
@@ -175,7 +159,7 @@
                 // If either parameter exists, trigger the geocoding process
                 geocodeAddress(cpFromUrl || '', addressFromUrl || ''); // Pass empty string if a param is missing
             } else {
-                showStatus('No address data found in URL. Please ensure Wix is configured to send "cp" and "moradaCompleta" parameters.', 'info');
+                handleError('No address data found in URL. Please ensure Wix is configured to send "cp" and "moradaCompleta" parameters.');
             }
         };
     </script>
