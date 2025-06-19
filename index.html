@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -17,23 +17,15 @@
             margin: 0;
             overflow: hidden;
         }
-        /* Style for the image inside the popup */
-        .leaflet-popup-content img {
-            max-width: 100px;
-            height: auto;
-            display: block;
-            margin: 0 auto 5px auto; /* Center image and add bottom margin */
-        }
+        /* Removed image-related styles */
         .leaflet-popup-content strong {
             display: block;
             text-align: center;
         }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-            integrity="sha2d24-rdAmH8pkpoG/gej7P9jmTYS4rKj/gmktzAbyBCSpm4ykT4BlB7L8J6f6s3sS2u4X"
             crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-            integrity="sha2d24-Rksm5Ren3j3N7YF+q3B/B/S/D1A4gT+zM0j8+8wR8PzD5d6C9d8S3sL5f6s7s8e"
             crossorigin=""></script>
 </head>
 <body class="bg-white">
@@ -74,13 +66,12 @@
 
         /**
          * Adds a marker to the map at the given coordinates with custom popup content.
-         * Displays image and name, or just name if image is missing, or "No info available" if both are missing.
+         * Displays name, or "No info available" if name is missing.
          * @param {number} lat - Latitude.
          * @param {number} lon - Longitude.
          * @param {string} name - Name to display.
-         * @param {string} imageUrl - URL of the image to display.
          */
-        function addMarker(lat, lon, name, imageUrl) {
+        function addMarker(lat, lon, name) { // Removed imageUrl parameter
             if (typeof lat !== 'number' || typeof lon !== 'number' || isNaN(lat) || isNaN(lon)) {
                 console.error("Invalid coordinates for marker:", name, "Lat:", lat, "Lon:", lon);
                 return; // Do not add marker if coordinates are invalid
@@ -89,16 +80,8 @@
             console.log("Attempting to add marker for:", name, "at Lat:", lat, "Lon:", lon);
 
             let popupContent = ``;
-            // Check if image URL exists and is not just whitespace
-            const hasImage = imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '';
             // Check if name exists and is not just whitespace
             const hasName = name && typeof name === 'string' && name.trim() !== '';
-
-            if (hasImage) {
-                popupContent += `<img src="${imageUrl}" alt="${name || 'Image'}">`;
-            } else {
-                console.warn(`No valid image URL provided for marker: ${name}`);
-            }
 
             if (hasName) {
                 popupContent += `<strong>${name}</strong>`;
@@ -106,8 +89,8 @@
                 console.warn(`No valid name provided for marker at: ${lat}, ${lon}`);
             }
 
-            // Fallback if neither image nor name is available
-            if (!hasImage && !hasName) {
+            // Fallback if name is not available
+            if (!hasName) {
                 popupContent = `No info available`;
             }
 
@@ -192,17 +175,17 @@
                         const geocodingPromises = receivedData.map(async (item) => {
                             const cpFromWix = item.cp;
                             const moradaCompletaFromWix = item.moradaCompleta;
-                            // Ensure name and image are strings, even if null/undefined
+                            // Ensure name is a string, even if null/undefined
                             const nameFromWix = item.name || '';
-                            const imageFromWix = item.image || ''; // This will now be the public URL
+                            // Removed imageFromWix variable as it's no longer used
 
-                            console.log(`Debug before geocoding: Item Name='${nameFromWix}', Image='${imageFromWix}', CP='${cpFromWix}', Morada='${moradaCompletaFromWix}'`);
+                            console.log(`Debug before geocoding: Item Name='${nameFromWix}', CP='${cpFromWix}', Morada='${moradaCompletaFromWix}'`);
 
                             if (cpFromWix || moradaCompletaFromWix) {
                                 const geoData = await geocodeAddress(cpFromWix || '', moradaCompletaFromWix || '');
                                 if (geoData) {
-                                    // Add marker if geocoding was successful, using the name and image from Wix
-                                    addMarker(geoData.lat, geoData.lon, nameFromWix, imageFromWix);
+                                    // Add marker if geocoding was successful, using only the name from Wix
+                                    addMarker(geoData.lat, geoData.lon, nameFromWix); // Removed imageFromWix
                                     return geoData;
                                 } else {
                                     console.warn(`Could not geocode address for item: '${nameFromWix}'. No marker will be added.`);
