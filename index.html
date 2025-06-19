@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -135,8 +135,8 @@
                 handleError('No address or postal code provided for geocoding.');
                 return null;
             }
-            if (apiKey === "f92e5192f9c44001b7fbcabc7b92ddb7" || apiKey === "") { // Updated check
-                handleError('Please replace "f92e5192f9c44001b7fbcabc7b92ddb7" in the script with your actual Geoapify API key.');
+            if (apiKey === "") { // Updated check
+                handleError('No API KEY');
                 return null;
             }
 
