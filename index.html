@@ -3,165 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mapa de Localizações</title>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <title>Address to Pin Map</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            margin: 0;
-            padding: 0;
-            font-family: Arial, sans-serif;
-            display: flex;
-            flex-direction: column;
-            height: 100vh; /* Ocupar 100% da altura da viewport */
-        }
+        /* Custom styles for Leaflet map */
         #map {
-            height: 100%; /* O mapa vai preencher o espaço disponível */
+            height: 500px; /* Set a default height for the map */
             width: 100%;
-            background-color: #f0f0f0; /* Fundo enquanto o mapa carrega */
+            border-radius: 0.5rem; /* Rounded corners for the map */
         }
-        #loading-message {
-            text-align: center;
-            padding: 20px;
-            color: #666;
-            font-size: 1.2em;
-        }
-        .info-window-content {
-            font-family: Arial, sans-serif;
-            line-height: 1.5;
-        }
-        .info-window-content h3 {
-            margin: 0 0 5px 0;
-            color: #0056b3;
-            font-size: 1.1em;
-        }
-        .info-window-content p {
-            margin: 0;
-            font-size: 0.9em;
-            color: #555;
-        }
-        .info-window-content img {
-            max-width: 80px;
-            max-height: 80px;
-            margin-bottom: 5px;
-            border-radius: 4px;
-            object-fit: contain;
+        /* Inter font for better readability */
+        body {
+            font-family: "Inter", sans-serif;
         }
     </style>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+          integrity="sha2d24-rdAmH8pkpoG/gej7P9jmTYS4rKj/gmktzAbyBCSpm4ykT4BlB7L8J6f6s3sS2u4X"
+          crossorigin=""/>
+    <!-- Leaflet JavaScript -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+            integrity="sha2d24-Rksm5Ren3j3N7YF+q3B/B/S/D1A4gT+zM0j8+8wR8PzD5d6C9d8S3sL5f6s7s8e"
+            crossorigin=""></script>
 </head>
-<body>
-    <div id="map"></div>
-    <div id="loading-message">Waiting for data from Wix to load map...</div>
+<body class="bg-gradient-to-br from-blue-100 to-purple-200 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-8 rounded-xl shadow-2xl w-full max-w-2xl transform transition-all duration-300 hover:scale-105">
+        <h1 class="text-3xl font-extrabold text-gray-800 mb-6 text-center">Locating Address...</h1>
+
+        <!-- Status/Error Message Display -->
+        <div id="statusMessage" class="mt-6 p-3 rounded-lg text-sm text-center hidden"></div>
+
+        <!-- Map Container -->
+        <div id="map" class="mt-6 rounded-lg shadow-inner border border-gray-200"></div>
+    </div>
 
     <script>
-        let map;
-        let markers = L.featureGroup(); // To store markers and manage them
+        // Initialize Leaflet map
+        let map = null;
+        let marker = null;
 
-        // This function initializes the Leaflet map
-        function initMap() {
-            // Define o centro inicial do mapa (Alvor, Portugal)
-            const alvor = { lat: 37.135, lng: -8.586 }; // Aproximado para Alvor
+        /**
+         * Initializes the Leaflet map if it hasn't been initialized already,
+         * or sets the view to a new center if it exists.
+         * @param {number} lat - Latitude.
+         * @param {number} lon - Longitude.
+         * @param {number} zoom - Zoom level.
+         */
+        function initializeMap(lat, lon, zoom = 15) {
+            if (map === null) {
+                // Initialize map if it doesn't exist
+                map = L.map('map').setView([lat, lon], zoom);
 
-            map = L.map('map').setView([alvor.lat, alvor.lng], 10); // Initialize map with center and zoom
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-
-            // Add the feature group to the map
-            markers.addTo(map);
-
-            // Ocultar mensagem de carregamento se o mapa já carregou antes dos dados
-            document.getElementById('loading-message').style.display = 'none';
-        }
-
-        // Initialize the map when the script loads
-        initMap();
-
-        // Function to add markers to the map
-        async function addMarkersToMap(locations) {
-            // Clear previous markers (if any)
-            markers.clearLayers();
-
-            // If the loading message is still visible, hide it
-            document.getElementById('loading-message').style.display = 'none';
-
-            if (!map) {
-                console.error("Mapa não inicializado.");
-                document.getElementById('loading-message').textContent = "Erro: O mapa não carregou.";
-                document.getElementById('loading-message').style.display = 'block';
-                return;
-            }
-
-            if (!locations || locations.length === 0) {
-                document.getElementById('loading-message').textContent = "Nenhum dado de localização recebido.";
-                document.getElementById('loading-message').style.display = 'block';
-                return;
-            }
-
-            const latLngs = []; // To store all marker coordinates for fitting bounds
-
-            for (const item of locations) {
-                // Use the latitude and longitude directly from the item if available
-                if (item.latitude && item.longitude) {
-                    const lat = parseFloat(item.latitude);
-                    const lng = parseFloat(item.longitude);
-                    const location = L.latLng(lat, lng);
-
-                    const fullAddress = `${item.moradaCompleta || ''}, ${item.cp || ''}, Portugal`.trim();
-
-                    // Content for the popup
-                    const contentString = `
-                        <div class="info-window-content">
-                            ${item.logotipo ? `<img src="${item.logotipo}" alt="Logo">` : ''}
-                            <h3>${item.title || 'Título Desconhecido'}</h3>
-                            <p>${fullAddress}</p>
-                        </div>
-                    `;
-
-                    const marker = L.marker(location).bindPopup(contentString);
-                    markers.addLayer(marker); // Add marker to the feature group
-                    latLngs.push(location); // Add coordinates for fitting bounds
-                } else {
-                    console.warn(`Item missing latitude or longitude, skipping:`, item);
-                }
-            }
-
-            // Adjust the map to show all markers
-            if (latLngs.length > 0) {
-                map.fitBounds(L.latLngBounds(latLngs));
+                // Add OpenStreetMap tiles
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    maxZoom: 19,
+                    attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
             } else {
-                document.getElementById('loading-message').textContent = "Nenhum local válido encontrado para exibir no mapa.";
-                document.getElementById('loading-message').style.display = 'block';
+                // If map already exists, just set the new view
+                map.setView([lat, lon], zoom);
             }
         }
 
-        // Listener for messages from Wix (same as your previous, but calls the map function)
-        window.onmessage = (event) => {
-            // SECURITY WARNING: The origin condition was removed as per your request for debugging.
-            // For production, it is HIGHLY RECOMMENDED to re-enable this check
-            // and ensure event.origin matches your published Wix domain.
-            // if (event.origin === "https://rutilportimao.wixsite.com") { // Example
-            try {
-                const data = JSON.parse(event.data);
-                console.log("Dados recebidos no iframe:", data); // For debugging
-
-                // Call the function to add markers to the map
-                addMarkersToMap(data);
-
-            } catch (error) {
-                console.error("Error parsing message from Wix:", error);
-                document.getElementById('loading-message').textContent = "Erro ao processar dados.";
-                document.getElementById('loading-message').style.display = 'block';
+        /**
+         * Adds a marker to the map at the given coordinates.
+         * Removes any existing marker first.
+         * @param {number} lat - Latitude.
+         * @param {number} lon - Longitude.
+         * @param {string} popupText - Text to display in the marker popup.
+         */
+        function addMarker(lat, lon, popupText) {
+            // Remove existing marker if any
+            if (marker !== null) {
+                map.removeLayer(marker);
             }
-            // } else {
-            //     console.warn("Message received from unexpected origin (blocked):", event.origin);
-            //     // Optional: show error or warning message to the user
-            //     document.getElementById('loading-message').textContent = "Erro de segurança: origem de dados inesperada.";
-            //     document.getElementById('loading-message').style.display = 'block';
-            // }
+            // Add new marker
+            marker = L.marker([lat, lon]).addTo(map)
+                .bindPopup(popupText)
+                .openPopup();
+        }
+
+        /**
+         * Displays a status or error message to the user.
+         * @param {string} message - The message to display.
+         * @param {string} type - 'success', 'error', or 'info'.
+         */
+        function showStatus(message, type) {
+            const statusMessageDiv = document.getElementById('statusMessage');
+            statusMessageDiv.textContent = message;
+            statusMessageDiv.classList.remove('hidden', 'bg-red-100', 'text-red-700', 'bg-green-100', 'text-green-700', 'bg-blue-100', 'text-blue-700');
+
+            if (type === 'error') {
+                statusMessageDiv.classList.add('bg-red-100', 'text-red-700');
+            } else if (type === 'success') {
+                statusMessageDiv.classList.add('bg-green-100', 'text-green-700');
+            } else { // info
+                statusMessageDiv.classList.add('bg-blue-100', 'text-blue-700');
+            }
+            statusMessageDiv.classList.remove('hidden');
+        }
+
+        /**
+         * Hides the status message.
+         */
+        function hideStatus() {
+            document.getElementById('statusMessage').classList.add('hidden');
+        }
+
+        /**
+         * Performs the geocoding request to Geoapify.
+         * @param {string} postalCode - The postal code.
+         * @param {string} address - The full address.
+         */
+        async function geocodeAddress(postalCode, address) {
+            const apiKey = "YOUR_GEOAPIFY_API_KEY"; // <<-- REPLACE WITH YOUR GEOAPIFY API KEY
+
+            if (!postalCode && !address) {
+                showStatus('No address or postal code provided in the URL. Please ensure Wix is sending the data correctly.', 'error');
+                return;
+            }
+            if (apiKey === "YOUR_GEOAPIFY_API_KEY" || apiKey === "") {
+                showStatus('Please replace "YOUR_GEOAPIFY_API_KEY" in the script with your actual Geoapify API key.', 'error');
+                return;
+            }
+
+            showStatus('Locating address on map...', 'info');
+
+            const query = encodeURIComponent(`${address}, ${postalCode}`);
+            const geoapifyUrl = `https://api.geoapify.com/v1/geocode/search?text=${query}&apiKey=${apiKey}`;
+
+            try {
+                const response = await fetch(geoapifyUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const data = await response.json();
+
+                if (data.features && data.features.length > 0) {
+                    const firstFeature = data.features[0];
+                    const lon = firstFeature.geometry.coordinates[0];
+                    const lat = firstFeature.geometry.coordinates[1];
+                    const formattedAddress = firstFeature.properties.formatted;
+
+                    initializeMap(lat, lon);
+                    addMarker(lat, lon, formattedAddress || 'Location found');
+                    showStatus(`Location found: ${formattedAddress || `Lat: ${lat}, Lon: ${lon}`}`, 'success');
+                } else {
+                    showStatus('No results found for the given address and postal code. Please check the data sent from Wix.', 'error');
+                    if (marker !== null) {
+                        map.removeLayer(marker); // Remove existing marker if search fails
+                    }
+                }
+            } catch (error) {
+                console.error('Error during geocoding:', error);
+                showStatus(`Failed to locate address: ${error.message}. Please check data from Wix and API key.`, 'error');
+            }
+        }
+
+        // Initialize map and handle URL parameters on window load
+        window.onload = function() {
+            initializeMap(38.7223, -9.1393, 10); // Default to Lisbon
+            showStatus('Waiting for address data from Wix...', 'info');
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const cpFromUrl = urlParams.get('cp'); // Get postal code from URL
+            const addressFromUrl = urlParams.get('moradaCompleta'); // Get full address from URL
+
+            if (cpFromUrl || addressFromUrl) {
+                // If either parameter exists, trigger the geocoding process
+                geocodeAddress(cpFromUrl || '', addressFromUrl || ''); // Pass empty string if a param is missing
+            } else {
+                showStatus('No address data found in URL. Please ensure Wix is configured to send "cp" and "moradaCompleta" parameters.', 'info');
+            }
         };
     </script>
 </body>
