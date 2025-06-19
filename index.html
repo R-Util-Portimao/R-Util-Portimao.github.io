@@ -38,7 +38,7 @@
     <script>
         // Initialize Leaflet map
         let map = null;
-        let marker = null;
+        let markers = L.featureGroup(); // Use a feature group to manage multiple markers
 
         /**
          * Initializes the Leaflet map if it hasn't been initialized already,
@@ -58,6 +58,9 @@
                     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }).addTo(map);
 
+                // Add the marker feature group to the map
+                markers.addTo(map);
+
                 // Ensure the map resizes correctly if the window changes size
                 window.addEventListener('resize', () => {
                     map.invalidateSize();
@@ -71,20 +74,15 @@
 
         /**
          * Adds a marker to the map at the given coordinates.
-         * Removes any existing marker first.
          * @param {number} lat - Latitude.
          * @param {number} lon - Longitude.
          * @param {string} popupText - Text to display in the marker popup.
          */
         function addMarker(lat, lon, popupText) {
-            // Remove existing marker if any
-            if (marker !== null) {
-                map.removeLayer(marker);
-            }
-            // Add new marker
-            marker = L.marker([lat, lon]).addTo(map)
+            const newMarker = L.marker([lat, lon])
                 .bindPopup(popupText)
                 .openPopup();
+            markers.addLayer(newMarker); // Add marker to the feature group
         }
 
         // Function to handle errors by logging to console
@@ -96,49 +94,48 @@
          * Performs the geocoding request to Geoapify.
          * @param {string} postalCode - The postal code.
          * @param {string} address - The full address.
+         * @returns {Promise<object|null>} - Resolves with geocoded data or null on error/no results.
          */
         async function geocodeAddress(postalCode, address) {
-            const apiKey = "f92e5192f9c44001b7fbcabc7b92ddb7"; // <<-- REPLACE WITH YOUR GEOAPIFY API KEY
+            const apiKey = "YOUR_GEOAPIFY_API_KEY"; // <<-- REPLACE WITH YOUR GEOAPIFY API KEY
 
             if (!postalCode && !address) {
-                handleError('No address or postal code provided via postMessage. Please ensure Wix is sending the data correctly.');
-                return;
+                handleError('No address or postal code provided for geocoding.');
+                return null;
             }
             if (apiKey === "YOUR_GEOAPIFY_API_KEY" || apiKey === "") {
                 handleError('Please replace "YOUR_GEOAPIFY_API_KEY" in the script with your actual Geoapify API key.');
-                return;
+                return null;
             }
 
             const query = encodeURIComponent(`${address}, ${postalCode}`);
             const geoapifyUrl = `https://api.geoapify.com/v1/geocode/search?text=${query}&apiKey=${apiKey}`;
 
             try {
-                console.log('Sending geocoding request for query:', query); // Log the query being sent
+                console.log('Sending geocoding request for query:', query);
                 const response = await fetch(geoapifyUrl);
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorText = await response.text();
+                    throw new Error(`HTTP error! status: ${response.status}, details: ${errorText}`);
                 }
                 const data = await response.json();
-                console.log('Geoapify response data:', data); // Log the full Geoapify response
+                console.log('Geoapify response data for query:', query, data);
 
                 if (data.features && data.features.length > 0) {
                     const firstFeature = data.features[0];
-                    const lon = firstFeature.geometry.coordinates[0];
-                    const lat = firstFeature.geometry.coordinates[1];
-                    const formattedAddress = firstFeature.properties.formatted;
-
-                    console.log(`Geocoded successfully: Lat=${lat}, Lon=${lon}, Address=${formattedAddress}`); // Log success
-                    initializeMap(lat, lon);
-                    addMarker(lat, lon, formattedAddress || 'Location found');
+                    return {
+                        lon: firstFeature.geometry.coordinates[0],
+                        lat: firstFeature.geometry.coordinates[1],
+                        formattedAddress: firstFeature.properties.formatted
+                    };
                 } else {
-                    handleError('No results found for the given address and postal code. Please check the data sent from Wix.');
-                    if (marker !== null) {
-                        map.removeLayer(marker); // Remove existing marker if search fails
-                    }
+                    console.warn('No geocoding results found for:', query);
+                    return null;
                 }
             } catch (error) {
-                console.error('Error during geocoding:', error);
-                handleError(`Failed to locate address: ${error.message}. Please check data from Wix and API key.`);
+                console.error('Error during geocoding for query:', query, error);
+                handleError(`Failed to locate address: ${error.message}.`);
+                return null;
             }
         }
 
@@ -152,26 +149,49 @@
             initializeMap(38.7223, -9.1393, 10); // Default to Lisbon
 
             // Listen for messages from the Wix parent frame
-            window.addEventListener('message', (event) => {
-                console.log('Message received from Wix:', event); // Log the raw event object
+            window.addEventListener('message', async (event) => { // Added 'async' here
+                console.log('Message received from Wix:', event);
                 try {
                     const receivedData = JSON.parse(event.data);
-                    console.log('Parsed data from Wix:', receivedData); // Log the parsed JSON data
+                    console.log('Parsed data from Wix:', receivedData);
 
                     if (Array.isArray(receivedData) && receivedData.length > 0) {
-                        const firstItem = receivedData[0];
-                        const cpFromWix = firstItem.cp;
-                        const moradaCompletaFromWix = firstItem.moradaCompleta;
+                        // Clear existing markers before adding new ones
+                        markers.clearLayers();
 
-                        console.log(`Extracted from Wix data: CP='${cpFromWix}', MoradaCompleta='${moradaCompletaFromWix}'`); // Log extracted fields
+                        const geocodingPromises = receivedData.map(async (item) => {
+                            const cpFromWix = item.cp;
+                            const moradaCompletaFromWix = item.moradaCompleta;
 
-                        if (cpFromWix || moradaCompletaFromWix) {
-                            geocodeAddress(cpFromWix || '', moradaCompletaFromWix || '');
+                            console.log(`Processing item: CP='${cpFromWix}', MoradaCompleta='${moradaCompletaFromWix}'`);
+
+                            if (cpFromWix || moradaCompletaFromWix) {
+                                const geoData = await geocodeAddress(cpFromWix || '', moradaCompletaFromWix || '');
+                                if (geoData) {
+                                    addMarker(geoData.lat, geoData.lon, geoData.formattedAddress || 'Location found');
+                                    return geoData; // Return data for potential future use (e.g., fitting bounds)
+                                }
+                            } else {
+                                handleError('An item received from Wix has missing "cp" or "moradaCompleta" fields.');
+                            }
+                            return null;
+                        });
+
+                        // Wait for all geocoding requests to complete
+                        const allGeoData = await Promise.all(geocodingPromises);
+                        const validGeoData = allGeoData.filter(data => data !== null);
+
+                        // If there are valid geocoded locations, adjust map view to fit all markers
+                        if (validGeoData.length > 0) {
+                            const bounds = L.latLngBounds(validGeoData.map(data => [data.lat, data.lon]));
+                            map.fitBounds(bounds, { padding: [50, 50] }); // Add some padding around the markers
                         } else {
-                            handleError('Received data from Wix, but "cp" or "moradaCompleta" fields are missing in the first item.');
+                            handleError('No valid addresses were geocoded from the received Wix data.');
                         }
+
                     } else {
                         handleError('Received data from Wix, but it is not a valid array or is empty.');
+                        markers.clearLayers(); // Clear map if no valid data
                     }
                 } catch (e) {
                     handleError('Error parsing message from Wix:', e);
