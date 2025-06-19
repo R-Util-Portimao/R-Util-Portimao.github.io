@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,6 @@
     <style>
         /* Custom styles for Leaflet map */
         #map {
-            /* Set height dynamically, allowing it to fill available space */
             height: 100vh; /* Make map take full viewport height */
             width: 100vw;  /* Make map take full viewport width */
             border-radius: 0; /* No rounded corners if it takes full screen */
@@ -24,7 +23,11 @@
             max-width: 100px; /* Adjust as needed */
             height: auto;
             display: block;
-            margin-bottom: 5px;
+            margin: 0 auto 5px auto; /* Center image and add bottom margin */
+        }
+        .leaflet-popup-content strong {
+            display: block; /* Make name take its own line */
+            text-align: center; /* Center the name */
         }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -34,83 +37,58 @@
             integrity="sha2d24-Rksm5Ren3j3N7YF+q3B/B/S/D1A4gT+zM0j8+8wR8PzD5d6C9d8S3sL5f6s7s8e"
             crossorigin=""></script>
 </head>
-<body class="bg-white"> <div id="map" class="w-full h-full"></div>
+<body class="bg-white">
+
+    <div id="map" class="w-full h-full"></div>
 
     <script>
-        // Initialize Leaflet map
         let map = null;
-        let markers = L.featureGroup(); // Use a feature group to manage multiple markers
+        let markers = L.featureGroup();
 
-        /**
-         * Initializes the Leaflet map if it hasn't been initialized already,
-         * or sets the view to a new center if it exists.
-         * @param {number} lat - Latitude.
-         * @param {number} lon - Longitude.
-         * @param {number} zoom - Zoom level.
-         */
         function initializeMap(lat, lon, zoom = 15) {
             if (map === null) {
-                // Initialize map if it doesn't exist, attached to the 'map' div
                 map = L.map('map').setView([lat, lon], zoom);
-
-                // Add OpenStreetMap tiles
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     maxZoom: 19,
                     attribution: '&copy; <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                 }).addTo(map);
-
-                // Add the marker feature group to the map
                 markers.addTo(map);
-
-                // Ensure the map resizes correctly if the window changes size
                 window.addEventListener('resize', () => {
                     map.invalidateSize();
                 });
-
             } else {
-                // If map already exists, just set the new view
                 map.setView([lat, lon], zoom);
             }
         }
 
         /**
-         * Adds a marker to the map at the given coordinates with custom popup content.
+         * Adds a marker to the map at the given coordinates with custom popup content
+         * showing only the name and image.
          * @param {number} lat - Latitude.
          * @param {number} lon - Longitude.
          * @param {string} name - Name to display.
          * @param {string} imageUrl - URL of the image to display.
-         * @param {string} addressText - Formatted address text.
          */
-        function addMarker(lat, lon, name, imageUrl, addressText) {
+        function addMarker(lat, lon, name, imageUrl) { // Removed addressText parameter
             let popupContent = ``;
 
             if (imageUrl) {
-                popupContent += `<img src="${imageUrl}" alt="${name || 'Image'}"><br>`;
+                popupContent += `<img src="${imageUrl}" alt="${name || 'Image'}">`;
             }
             if (name) {
-                popupContent += `<strong>${name}</strong><br>`;
-            }
-            if (addressText) {
-                popupContent += `${addressText}`;
+                popupContent += `<strong>${name}</strong>`;
             }
 
             const newMarker = L.marker([lat, lon])
                 .bindPopup(popupContent)
                 .openPopup();
-            markers.addLayer(newMarker); // Add marker to the feature group
+            markers.addLayer(newMarker);
         }
 
-        // Function to handle errors by logging to console
         function handleError(message) {
             console.error(message);
         }
 
-        /**
-         * Performs the geocoding request to Geoapify.
-         * @param {string} postalCode - The postal code.
-         * @param {string} address - The full address.
-         * @returns {Promise<object|null>} - Resolves with geocoded data or null on error/no results.
-         */
         async function geocodeAddress(postalCode, address) {
             const apiKey = "f92e5192f9c44001b7fbcabc7b92ddb7"; // <<-- REPLACE WITH YOUR GEOAPIFY API KEY
 
@@ -141,7 +119,7 @@
                     return {
                         lon: firstFeature.geometry.coordinates[0],
                         lat: firstFeature.geometry.coordinates[1],
-                        formattedAddress: firstFeature.properties.formatted
+                        formattedAddress: firstFeature.properties.formatted // Still get formattedAddress for logging/debug if needed, but not used in popup
                     };
                 } else {
                     console.warn('No geocoding results found for:', query);
@@ -154,40 +132,36 @@
             }
         }
 
-        // Initialize map and listen for messages from Wix on window load
         window.onload = function() {
-            // Set initial map size to fill the screen
             const mapElement = document.getElementById('map');
             mapElement.style.width = '100vw';
             mapElement.style.height = '100vh';
 
             initializeMap(38.7223, -9.1393, 10); // Default to Lisbon
 
-            // Listen for messages from the Wix parent frame
-            window.addEventListener('message', async (event) => { // Added 'async' here
+            window.addEventListener('message', async (event) => {
                 console.log('Message received from Wix:', event);
                 try {
                     const receivedData = JSON.parse(event.data);
                     console.log('Parsed data from Wix:', receivedData);
 
                     if (Array.isArray(receivedData) && receivedData.length > 0) {
-                        // Clear existing markers before adding new ones
                         markers.clearLayers();
 
                         const geocodingPromises = receivedData.map(async (item) => {
                             const cpFromWix = item.cp;
                             const moradaCompletaFromWix = item.moradaCompleta;
-                            const nameFromWix = item.name; // Get name
-                            const imageFromWix = item.image; // Get image URL
+                            const nameFromWix = item.name;
+                            const imageFromWix = item.image;
 
                             console.log(`Processing item: CP='${cpFromWix}', MoradaCompleta='${moradaCompletaFromWix}', Name='${nameFromWix}', Image='${imageFromWix}'`);
 
                             if (cpFromWix || moradaCompletaFromWix) {
                                 const geoData = await geocodeAddress(cpFromWix || '', moradaCompletaFromWix || '');
                                 if (geoData) {
-                                    // Pass name and image to addMarker
-                                    addMarker(geoData.lat, geoData.lon, nameFromWix, imageFromWix, geoData.formattedAddress || 'Location found');
-                                    return geoData; // Return data for potential future use (e.g., fitting bounds)
+                                    // Pass only name and image to addMarker
+                                    addMarker(geoData.lat, geoData.lon, nameFromWix, imageFromWix);
+                                    return geoData;
                                 }
                             } else {
                                 handleError('An item received from Wix has missing "cp" or "moradaCompleta" fields.');
@@ -195,21 +169,19 @@
                             return null;
                         });
 
-                        // Wait for all geocoding requests to complete
                         const allGeoData = await Promise.all(geocodingPromises);
                         const validGeoData = allGeoData.filter(data => data !== null);
 
-                        // If there are valid geocoded locations, adjust map view to fit all markers
                         if (validGeoData.length > 0) {
                             const bounds = L.latLngBounds(validGeoData.map(data => [data.lat, data.lon]));
-                            map.fitBounds(bounds, { padding: [50, 50] }); // Add some padding around the markers
+                            map.fitBounds(bounds, { padding: [50, 50] });
                         } else {
                             handleError('No valid addresses were geocoded from the received Wix data.');
                         }
 
                     } else {
                         handleError('Received data from Wix, but it is not a valid array or is empty.');
-                        markers.clearLayers(); // Clear map if no valid data
+                        markers.clearLayers();
                     }
                 } catch (e) {
                     handleError('Error parsing message from Wix:', e);
