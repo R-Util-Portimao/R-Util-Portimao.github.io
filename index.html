@@ -63,7 +63,7 @@
         }
 
         /**
-         * Adds a marker to the map at the given coordinates with custom popup content.
+         * Adds a marker tblocko the map at the given coordinates with custom popup content.
          * Displays name, or "No info available" if name is missing.
          * @param {number} lat - Latitude.
          * @param {number} lon - Longitude.
@@ -100,7 +100,7 @@
         }
 
         function handleError(message) {
-            //console.error(message);
+            console.error(message);
         }
 
         /**
@@ -110,14 +110,14 @@
          * @returns {Promise<object|null>} - Resolves with geocoded data or null on error/no results.
          */
         async function geocodeAddress(postalCode, address) {
-            const apiKey = "f92e5192f9c44001b7fbcabc7b92ddb7"; // <<-- REPLACE WITH YOUR GEOAPIFY API KEY
+            const apiKey = "f92e5192f9c44001b7fbcabc7b92ddb7"; // I know this is not secure :)
 
             if (!postalCode && !address) {
-                handleError('No address or postal code provided for geocoding.');
+                //handleError('No address or postal code provided for geocoding.');
                 return null;
             }
             if (apiKey === "") { // Updated check
-                handleError('No API KEY');
+                //handleError('No API KEY');
                 return null;
             }
 
@@ -148,7 +148,7 @@
                 }
             } catch (error) {
                 //console.error('Error during geocoding for query:', query, error);
-                handleError(`Failed to locate address: ${error.message}.`);
+                //handleError(`Failed to locate address: ${error.message}.`);
                 return null;
             }
         }
@@ -189,7 +189,7 @@
                                     //console.warn(`Could not geocode address for item: '${nameFromWix}'. No marker will be added.`);
                                 }
                             } else {
-                                handleError('An item received from Wix has missing "cp" and "moradaCompleta" fields. Cannot geocode.');
+                                //handleError('An item received from Wix has missing "cp" and "moradaCompleta" fields. Cannot geocode.');
                             }
                             return null;
                         });
@@ -204,15 +204,15 @@
                             map.fitBounds(bounds, { padding: [50, 50] });
                            // console.log("Map bounds fitted to markers.");
                         } else {
-                            handleError('No valid addresses were geocoded from the received Wix data. Map will show default view.');
+                            //handleError('No valid addresses were geocoded from the received Wix data. Map will show default view.');
                         }
 
                     } else {
-                        handleError('Received data from Wix, but it is not a valid array or is empty. Clearing map markers.');
+                        //handleError('Received data from Wix, but it is not a valid array or is empty. Clearing map markers.');
                         markers.clearLayers();
                     }
                 } catch (e) {
-                    handleError('Error processing message from Wix: ' + e.message); // Improved error logging
+                    //handleError('Error processing message from Wix: ' + e.message); // Improved error logging
                 }
             });
         };
