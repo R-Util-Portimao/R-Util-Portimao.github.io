@@ -30,8 +30,8 @@
         }
     </style>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-          integrity="sha2d24-rdAmH8pkpoG/gej7P9jmTYS4rKj/gmktzAbyBCSpm4ykT4BlB7L8J6f6s3sS2u4X"
-          crossorigin=""/>
+            integrity="sha2d24-rdAmH8pkpoG/gej7P9jmTYS4rKj/gmktzAbyBCSpm4ykT4BlB7L8J6f6s3sS2u4X"
+            crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha2d24-Rksm5Ren3j3N7YF+q3B/B/S/D1A4gT+zM0j8+8wR8PzD5d6C9d8S3sL5f6s7s8e"
             crossorigin=""></script>
@@ -89,8 +89,10 @@
             console.log("Attempting to add marker for:", name, "at Lat:", lat, "Lon:", lon);
 
             let popupContent = ``;
-            const hasImage = imageUrl && imageUrl.trim() !== ''; // Check if image URL exists and is not just whitespace
-            const hasName = name && name.trim() !== '';         // Check if name exists and is not just whitespace
+            // Check if image URL exists and is not just whitespace
+            const hasImage = imageUrl && typeof imageUrl === 'string' && imageUrl.trim() !== '';
+            // Check if name exists and is not just whitespace
+            const hasName = name && typeof name === 'string' && name.trim() !== '';
 
             if (hasImage) {
                 popupContent += `<img src="${imageUrl}" alt="${name || 'Image'}">`;
@@ -110,8 +112,8 @@
             }
 
             const newMarker = L.marker([lat, lon])
-                .bindPopup(popupContent)
-                .openPopup(); // Open popup automatically for testing
+                .bindPopup(popupContent);
+                // Removed .openPopup() to not open all popups by default on load
             markers.addLayer(newMarker);
             console.log("Marker added successfully for:", name);
         }
@@ -133,8 +135,8 @@
                 handleError('No address or postal code provided for geocoding.');
                 return null;
             }
-            if (apiKey === "YOUR_GEOAPIFY_API_KEY" || apiKey === "") {
-                handleError('Please replace "YOUR_GEOAPIFY_API_KEY" in the script with your actual Geoapify API key.');
+            if (apiKey === "f92e5192f9c44001b7fbcabc7b92ddb7" || apiKey === "") { // Updated check
+                handleError('Please replace "f92e5192f9c44001b7fbcabc7b92ddb7" in the script with your actual Geoapify API key.');
                 return null;
             }
 
@@ -192,14 +194,14 @@
                             const moradaCompletaFromWix = item.moradaCompleta;
                             // Ensure name and image are strings, even if null/undefined
                             const nameFromWix = item.name || '';
-                            const imageFromWix = item.image || '';
+                            const imageFromWix = item.image || ''; // This will now be the public URL
 
                             console.log(`Debug before geocoding: Item Name='${nameFromWix}', Image='${imageFromWix}', CP='${cpFromWix}', Morada='${moradaCompletaFromWix}'`);
 
                             if (cpFromWix || moradaCompletaFromWix) {
                                 const geoData = await geocodeAddress(cpFromWix || '', moradaCompletaFromWix || '');
                                 if (geoData) {
-                                    // Add marker if geocoding was successful
+                                    // Add marker if geocoding was successful, using the name and image from Wix
                                     addMarker(geoData.lat, geoData.lon, nameFromWix, imageFromWix);
                                     return geoData;
                                 } else {
@@ -229,7 +231,7 @@
                         markers.clearLayers();
                     }
                 } catch (e) {
-                    handleError('Error processing message from Wix:', e);
+                    handleError('Error processing message from Wix: ' + e.message); // Improved error logging
                 }
             });
         };
