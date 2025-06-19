@@ -74,6 +74,7 @@
 
         /**
          * Adds a marker to the map at the given coordinates with custom popup content.
+         * Displays image and name, or just name if image is missing, or "No info available" if both are missing.
          * @param {number} lat - Latitude.
          * @param {number} lon - Longitude.
          * @param {string} name - Name to display.
@@ -88,20 +89,23 @@
             console.log("Attempting to add marker for:", name, "at Lat:", lat, "Lon:", lon);
 
             let popupContent = ``;
+            const hasImage = imageUrl && imageUrl.trim() !== ''; // Check if image URL exists and is not just whitespace
+            const hasName = name && name.trim() !== '';         // Check if name exists and is not just whitespace
 
-            if (imageUrl) {
+            if (hasImage) {
                 popupContent += `<img src="${imageUrl}" alt="${name || 'Image'}">`;
             } else {
-                console.warn(`No image URL provided for marker: ${name}`);
+                console.warn(`No valid image URL provided for marker: ${name}`);
             }
 
-            if (name) {
+            if (hasName) {
                 popupContent += `<strong>${name}</strong>`;
             } else {
-                console.warn(`No name provided for marker at: ${lat}, ${lon}`);
+                console.warn(`No valid name provided for marker at: ${lat}, ${lon}`);
             }
 
-            if (!imageUrl && !name) {
+            // Fallback if neither image nor name is available
+            if (!hasImage && !hasName) {
                 popupContent = `No info available`;
             }
 
@@ -134,8 +138,8 @@
                 return null;
             }
 
-            const query = encodeURIComponent(`${address || ''}, ${postalCode || ''}`); // Ensure query is not "undefined, undefined"
-            const geoapifyUrl = `https://api.geoapify.com/v1/geocode/search?text=${query}&apiKey=${apiKey}&lang=pt`; // Added lang=pt for better results in Portuguese
+            const query = encodeURIComponent(`${address || ''}, ${postalCode || ''}`);
+            const geoapifyUrl = `https://api.geoapify.com/v1/geocode/search?text=${query}&apiKey=${apiKey}&lang=pt`;
 
             console.log('Sending geocoding request for query:', query);
             try {
@@ -186,19 +190,20 @@
                         const geocodingPromises = receivedData.map(async (item) => {
                             const cpFromWix = item.cp;
                             const moradaCompletaFromWix = item.moradaCompleta;
-                            const nameFromWix = item.name; // 'title' from Wix
-                            const imageFromWix = item.image; // 'logotipo' from Wix
+                            // Ensure name and image are strings, even if null/undefined
+                            const nameFromWix = item.name || '';
+                            const imageFromWix = item.image || '';
 
-                            console.log(`Processing item: Name='${nameFromWix}', CP='${cpFromWix}', MoradaCompleta='${moradaCompletaFromWix}'`);
+                            console.log(`Debug before geocoding: Item Name='${nameFromWix}', Image='${imageFromWix}', CP='${cpFromWix}', Morada='${moradaCompletaFromWix}'`);
 
                             if (cpFromWix || moradaCompletaFromWix) {
                                 const geoData = await geocodeAddress(cpFromWix || '', moradaCompletaFromWix || '');
                                 if (geoData) {
                                     // Add marker if geocoding was successful
                                     addMarker(geoData.lat, geoData.lon, nameFromWix, imageFromWix);
-                                    return geoData; // Return data for potential future use (e.g., fitting bounds)
+                                    return geoData;
                                 } else {
-                                    console.warn(`Could not geocode address for item: ${nameFromWix}. No marker will be added.`);
+                                    console.warn(`Could not geocode address for item: '${nameFromWix}'. No marker will be added.`);
                                 }
                             } else {
                                 handleError('An item received from Wix has missing "cp" and "moradaCompleta" fields. Cannot geocode.');
@@ -213,7 +218,7 @@
                         // If there are valid geocoded locations, adjust map view to fit all markers
                         if (validGeoData.length > 0) {
                             const bounds = L.latLngBounds(validGeoData.map(data => [data.lat, data.lon]));
-                            map.fitBounds(bounds, { padding: [50, 50] }); // Add some padding around the markers
+                            map.fitBounds(bounds, { padding: [50, 50] });
                             console.log("Map bounds fitted to markers.");
                         } else {
                             handleError('No valid addresses were geocoded from the received Wix data. Map will show default view.');
