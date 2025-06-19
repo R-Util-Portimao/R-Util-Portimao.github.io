@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -87,11 +87,9 @@
                 .openPopup();
         }
 
-        // Function to handle errors without displaying a separate message div
+        // Function to handle errors by logging to console
         function handleError(message) {
-            console.error(message); // Log errors to the console
-            // Potentially add a small, discreet overlay message if absolutely necessary,
-            // but for "map only", the goal is no extra UI.
+            console.error(message);
         }
 
         /**
@@ -103,7 +101,7 @@
             const apiKey = "YOUR_GEOAPIFY_API_KEY"; // <<-- REPLACE WITH YOUR GEOAPIFY API KEY
 
             if (!postalCode && !address) {
-                handleError('No address or postal code provided in the URL. Please ensure Wix is sending the data correctly.');
+                handleError('No address or postal code provided via postMessage. Please ensure Wix is sending the data correctly.');
                 return;
             }
             if (apiKey === "YOUR_GEOAPIFY_API_KEY" || apiKey === "") {
@@ -115,11 +113,13 @@
             const geoapifyUrl = `https://api.geoapify.com/v1/geocode/search?text=${query}&apiKey=${apiKey}`;
 
             try {
+                console.log('Sending geocoding request for query:', query); // Log the query being sent
                 const response = await fetch(geoapifyUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
                 const data = await response.json();
+                console.log('Geoapify response data:', data); // Log the full Geoapify response
 
                 if (data.features && data.features.length > 0) {
                     const firstFeature = data.features[0];
@@ -127,9 +127,9 @@
                     const lat = firstFeature.geometry.coordinates[1];
                     const formattedAddress = firstFeature.properties.formatted;
 
+                    console.log(`Geocoded successfully: Lat=${lat}, Lon=${lon}, Address=${formattedAddress}`); // Log success
                     initializeMap(lat, lon);
                     addMarker(lat, lon, formattedAddress || 'Location found');
-                    // No success message needed as only map is visible
                 } else {
                     handleError('No results found for the given address and postal code. Please check the data sent from Wix.');
                     if (marker !== null) {
@@ -142,7 +142,7 @@
             }
         }
 
-        // Initialize map and handle URL parameters on window load
+        // Initialize map and listen for messages from Wix on window load
         window.onload = function() {
             // Set initial map size to fill the screen
             const mapElement = document.getElementById('map');
@@ -151,16 +151,32 @@
 
             initializeMap(38.7223, -9.1393, 10); // Default to Lisbon
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const cpFromUrl = urlParams.get('cp'); // Get postal code from URL
-            const addressFromUrl = urlParams.get('moradaCompleta'); // Get full address from URL
+            // Listen for messages from the Wix parent frame
+            window.addEventListener('message', (event) => {
+                console.log('Message received from Wix:', event); // Log the raw event object
+                try {
+                    const receivedData = JSON.parse(event.data);
+                    console.log('Parsed data from Wix:', receivedData); // Log the parsed JSON data
 
-            if (cpFromUrl || addressFromUrl) {
-                // If either parameter exists, trigger the geocoding process
-                geocodeAddress(cpFromUrl || '', addressFromUrl || ''); // Pass empty string if a param is missing
-            } else {
-                handleError('No address data found in URL. Please ensure Wix is configured to send "cp" and "moradaCompleta" parameters.');
-            }
+                    if (Array.isArray(receivedData) && receivedData.length > 0) {
+                        const firstItem = receivedData[0];
+                        const cpFromWix = firstItem.cp;
+                        const moradaCompletaFromWix = firstItem.moradaCompleta;
+
+                        console.log(`Extracted from Wix data: CP='${cpFromWix}', MoradaCompleta='${moradaCompletaFromWix}'`); // Log extracted fields
+
+                        if (cpFromWix || moradaCompletaFromWix) {
+                            geocodeAddress(cpFromWix || '', moradaCompletaFromWix || '');
+                        } else {
+                            handleError('Received data from Wix, but "cp" or "moradaCompleta" fields are missing in the first item.');
+                        }
+                    } else {
+                        handleError('Received data from Wix, but it is not a valid array or is empty.');
+                    }
+                } catch (e) {
+                    handleError('Error parsing message from Wix:', e);
+                }
+            });
         };
     </script>
 </body>
