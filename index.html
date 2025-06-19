@@ -123,7 +123,7 @@
                 return null;
             }
 
-            const query = encodeURIComponent(`${address || '',} ${postalCode || ''}`);
+            const query = encodeURIComponent(`${address || ''}, ${postalCode || ''}`);
             const geoapifyUrl = `https://api.geoapify.com/v1/geocode/search?text=${query}&apiKey=${apiKey}&lang=pt`;
 
             //console.log('Sending geocoding request for query:', query);
