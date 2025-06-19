@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -191,8 +191,8 @@
                             const cpFromWix = item.cp;
                             const moradaCompletaFromWix = item.moradaCompleta;
                             // Ensure name and image are strings, even if null/undefined
-                            const nameFromWix = item.name || '';
-                            const imageFromWix = item.image || '';
+                            const nameFromWix = item.title || '';
+                            const imageFromWix = item.logotipo || '';
 
                             console.log(`Debug before geocoding: Item Name='${nameFromWix}', Image='${imageFromWix}', CP='${cpFromWix}', Morada='${moradaCompletaFromWix}'`);
 
