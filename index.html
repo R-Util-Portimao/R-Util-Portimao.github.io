@@ -1,11 +1,11 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Mapa de Localizações</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="  crossorigin=""/>
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <style>
         body {
             margin: 0;
@@ -49,7 +49,7 @@
         }
     </style>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="  crossorigin=""></script>
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body>
     <div id="map"></div>
@@ -104,41 +104,28 @@
             const latLngs = []; // To store all marker coordinates for fitting bounds
 
             for (const item of locations) {
-                const fullAddress = ${item.moradaCompleta || ''}, ${item.cp || ''}, Portugal.trim();
+                // Use the latitude and longitude directly from the item if available
+                if (item.latitude && item.longitude) {
+                    const lat = parseFloat(item.latitude);
+                    const lng = parseFloat(item.longitude);
+                    const location = L.latLng(lat, lng);
 
-                if (!fullAddress || fullAddress.length < 5) {
-                    console.warn(Endereço inválido para geocodificação: ${item.title || 'Título Desconhecido'});
-                    continue;
-                }
+                    const fullAddress = `${item.moradaCompleta || ''}, ${item.cp || ''}, Portugal`.trim();
 
-                try {
-                    // Using OpenStreetMap's Nominatim for geocoding
-                    const response = await fetch(https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(fullAddress)});
-                    const data = await response.json();
+                    // Content for the popup
+                    const contentString = `
+                        <div class="info-window-content">
+                            ${item.logotipo ? `<img src="${item.logotipo}" alt="Logo">` : ''}
+                            <h3>${item.title || 'Título Desconhecido'}</h3>
+                            <p>${fullAddress}</p>
+                        </div>
+                    `;
 
-                    if (data && data.length > 0) {
-                        const lat = parseFloat(data[0].lat);
-                        const lng = parseFloat(data[0].lon);
-                        const location = L.latLng(lat, lng);
-
-                        // Content for the popup
-                        const contentString = `
-                            <div class="info-window-content">
-                                ${item.logotipo ? <img src="${item.logotipo}" alt="Logo"> : ''}
-                                <h3>${item.title || 'Título Desconhecido'}</h3>
-                                <p>${fullAddress}</p>
-                            </div>
-                        `;
-
-                        const marker = L.marker(location).bindPopup(contentString);
-                        markers.addLayer(marker); // Add marker to the feature group
-                        latLngs.push(location); // Add coordinates for fitting bounds
-
-                    } else {
-                        console.warn(Não foi possível geocodificar o endereço para: ${item.title} (${fullAddress}));
-                    }
-                } catch (e) {
-                    console.error(Erro na geocodificação para ${fullAddress}:, e);
+                    const marker = L.marker(location).bindPopup(contentString);
+                    markers.addLayer(marker); // Add marker to the feature group
+                    latLngs.push(location); // Add coordinates for fitting bounds
+                } else {
+                    console.warn(`Item missing latitude or longitude, skipping:`, item);
                 }
             }
 
@@ -153,7 +140,7 @@
 
         // Listener for messages from Wix (same as your previous, but calls the map function)
         window.onmessage = (event) => {
-            // SECURITY WARNING: The origin condition was removed for debugging.
+            // SECURITY WARNING: The origin condition was removed as per your request for debugging.
             // For production, it is HIGHLY RECOMMENDED to re-enable this check
             // and ensure event.origin matches your published Wix domain.
             // if (event.origin === "https://rutilportimao.wixsite.com") { // Example
@@ -170,12 +157,12 @@
                 document.getElementById('loading-message').style.display = 'block';
             }
             // } else {
-            //      console.warn("Message received from unexpected origin (blocked):", event.origin);
-            //      // Optional: show error or warning message to the user
-            //      document.getElementById('loading-message').textContent = "Erro de segurança: origem de dados inesperada.";
-            //      document.getElementById('loading-message').style.display = 'block';
+            //     console.warn("Message received from unexpected origin (blocked):", event.origin);
+            //     // Optional: show error or warning message to the user
+            //     document.getElementById('loading-message').textContent = "Erro de segurança: origem de dados inesperada.";
+            //     document.getElementById('loading-message').style.display = 'block';
             // }
         };
     </script>
 </body>
-</html>\
+</html>
