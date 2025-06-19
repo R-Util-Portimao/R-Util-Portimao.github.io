@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Address to Pin Map</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Custom styles for Leaflet map */
@@ -20,20 +19,22 @@
             margin: 0; /* Remove default body margin */
             overflow: hidden; /* Prevent scrolling */
         }
+        /* Style for the image inside the popup */
+        .leaflet-popup-content img {
+            max-width: 100px; /* Adjust as needed */
+            height: auto;
+            display: block;
+            margin-bottom: 5px;
+        }
     </style>
-    <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
           integrity="sha2d24-rdAmH8pkpoG/gej7P9jmTYS4rKj/gmktzAbyBCSpm4ykT4BlB7L8J6f6s3sS2u4X"
           crossorigin=""/>
-    <!-- Leaflet JavaScript -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha2d24-Rksm5Ren3j3N7YF+q3B/B/S/D1A4gT+zM0j8+8wR8PzD5d6C9d8S3sL5f6s7s8e"
             crossorigin=""></script>
 </head>
-<body class="bg-white"> <!-- Changed body background to white, removed centering classes -->
-
-    <!-- Map Container - now directly in the body -->
-    <div id="map" class="w-full h-full"></div>
+<body class="bg-white"> <div id="map" class="w-full h-full"></div>
 
     <script>
         // Initialize Leaflet map
@@ -73,14 +74,28 @@
         }
 
         /**
-         * Adds a marker to the map at the given coordinates.
+         * Adds a marker to the map at the given coordinates with custom popup content.
          * @param {number} lat - Latitude.
          * @param {number} lon - Longitude.
-         * @param {string} popupText - Text to display in the marker popup.
+         * @param {string} name - Name to display.
+         * @param {string} imageUrl - URL of the image to display.
+         * @param {string} addressText - Formatted address text.
          */
-        function addMarker(lat, lon, popupText) {
+        function addMarker(lat, lon, name, imageUrl, addressText) {
+            let popupContent = ``;
+
+            if (imageUrl) {
+                popupContent += `<img src="${imageUrl}" alt="${name || 'Image'}"><br>`;
+            }
+            if (name) {
+                popupContent += `<strong>${name}</strong><br>`;
+            }
+            if (addressText) {
+                popupContent += `${addressText}`;
+            }
+
             const newMarker = L.marker([lat, lon])
-                .bindPopup(popupText)
+                .bindPopup(popupContent)
                 .openPopup();
             markers.addLayer(newMarker); // Add marker to the feature group
         }
@@ -162,13 +177,16 @@
                         const geocodingPromises = receivedData.map(async (item) => {
                             const cpFromWix = item.cp;
                             const moradaCompletaFromWix = item.moradaCompleta;
+                            const nameFromWix = item.name; // Get name
+                            const imageFromWix = item.image; // Get image URL
 
-                            console.log(`Processing item: CP='${cpFromWix}', MoradaCompleta='${moradaCompletaFromWix}'`);
+                            console.log(`Processing item: CP='${cpFromWix}', MoradaCompleta='${moradaCompletaFromWix}', Name='${nameFromWix}', Image='${imageFromWix}'`);
 
                             if (cpFromWix || moradaCompletaFromWix) {
                                 const geoData = await geocodeAddress(cpFromWix || '', moradaCompletaFromWix || '');
                                 if (geoData) {
-                                    addMarker(geoData.lat, geoData.lon, geoData.formattedAddress || 'Location found');
+                                    // Pass name and image to addMarker
+                                    addMarker(geoData.lat, geoData.lon, nameFromWix, imageFromWix, geoData.formattedAddress || 'Location found');
                                     return geoData; // Return data for potential future use (e.g., fitting bounds)
                                 }
                             } else {
